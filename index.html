@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport"
+        content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>Mis Suscripciones</title>
+    <link rel="manifest" href="manifest.json">
+    <link rel="stylesheet" href="style.css">
+
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+    <!-- PocketBase & Icons -->
+    <script src="https://unpkg.com/pocketbase/dist/pocketbase.umd.js"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+</head>
+
+<body>
+
+    <!-- LOGIN -->
+    <div id="auth-container" class="view">
+        <div class="login-box">
+            <h2>Mis Suscripciones</h2>
+            <input type="email" id="login-email" placeholder="Email" autocomplete="email">
+            <input type="password" id="login-pass" placeholder="Contraseña">
+            <button id="btn-login" onclick="login()">Entrar</button>
+        </div>
+    </div>
+
+    <!-- PANTALLA PRINCIPAL: INICIO -->
+    <div id="view-home" class="view">
+        <header class="main-header">
+            <div class="header-top">
+                <span class="header-t">MIS SUSCRIPCIONES</span>
+                <button class="icon-btn" onclick="showView('view-settings')">
+                    <i data-lucide="settings"></i>
+                </button>
+            </div>
+            <div class="monthly-spend">
+                <h1 id="total-monthly-spend">-$0.00</h1>
+                <span class="subtitle">GASTO MENSUAL</span>
+            </div>
+        </header>
+
+        <section class="main-content" id="subs-list-container">
+            <!-- Los grupos de suscripciones se inyectarán aquí -->
+        </section>
+
+        <div class="timeline-end">FIN DEL CRONOGRAMA</div>
+
+        <!-- FAB y NAVBAR -->
+        <button class="fab-add" onclick="showAdd()">
+            <i data-lucide="plus"></i>
+        </button>
+        <nav class="bottom-nav">
+            <div class="nav-item active" onclick="showView('view-home')">
+                <i data-lucide="calendar"></i>
+                <span>INICIO</span>
+            </div>
+            <div class="nav-item" onclick="alert('Estadísticas en desarrollo')">
+                <i data-lucide="bar-chart-2"></i>
+                <span>ESTADÍSTICAS</span>
+            </div>
+        </nav>
+    </div>
+
+    <!-- PANTALLA AÑADIR/EDITAR -->
+    <div id="view-add" class="view">
+        <header class="add-header">
+            <button class="text-btn text-muted" onclick="showView('view-home')">Cancelar</button>
+            <h3 id="add-modal-title">NUEVA SUSCRIPCIÓN</h3>
+            <button class="text-btn text-primary pointer-event" id="btn-save"
+                onclick="saveSubscription()">Guardar</button>
+        </header>
+
+        <div class="form-container">
+            <div class="input-group">
+                <label>NOMBRE DEL SERVICIO</label>
+                <input type="text" id="add-name" placeholder="Netflix...">
+            </div>
+
+            <div class="input-group">
+                <label>CANTIDAD</label>
+                <div class="currency-input">
+                    <span class="currency-symbol" id="currency-symbol-add">$</span>
+                    <input type="number" id="add-amount" placeholder="0.00" step="0.01">
+                </div>
+            </div>
+
+            <div class="input-group">
+                <label>CICLO DE FACTURACIÓN</label>
+                <div class="tabs">
+                    <div class="tab active" data-cycle="mensual" onclick="setCycle('mensual')">MENSUAL</div>
+                    <div class="tab" data-cycle="anual" onclick="setCycle('anual')">ANUAL</div>
+                    <div class="tab" data-cycle="semanal" onclick="setCycle('semanal')">SEMANAL</div>
+                </div>
+            </div>
+
+            <div class="input-group">
+                <label>LOGO</label>
+                <div style="display: flex; gap: 10px; align-items: flex-end;">
+                    <div class="sub-logo-preview" id="preview-logo">N</div>
+                    <div style="flex: 1;">
+                        <input type="text" id="add-logo" placeholder="URL de la imagen (opcional)"
+                            style="font-size: 14px;">
+                    </div>
+                    <button class="text-btn text-primary" type="button" onclick="autoBuscarLogo()"
+                        style="padding: 10px; border: 1px solid var(--border-color); border-radius: 4px; font-size: 12px; margin-bottom: 5px;">Auto</button>
+                </div>
+            </div>
+
+            <div class="input-group">
+                <label>PRIMERA FACTURA</label>
+                <div class="date-input-wrap">
+                    <input type="date" id="add-date">
+                    <i data-lucide="calendar" class="date-icon"></i>
+                </div>
+                <p class="hint">La próxima fecha de cobro se calculará automáticamente.</p>
+            </div>
+        </div>
+
+        <div class="add-footer">
+            <div class="warning-msg">
+                <i data-lucide="info"></i>
+                <span>CONFIRMA LOS DATOS ANTES DE GUARDAR</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- PANTALLA DETALLES DE SUSCRIPCIÓN -->
+    <div id="view-details" class="view">
+        <header class="details-header">
+            <button class="icon-btn" onclick="showView('view-home')">
+                <i data-lucide="chevron-down"></i>
+            </button>
+            <div class="dragger-pill"></div>
+            <button class="icon-btn" onclick="editCurrentSub()">
+                <i data-lucide="pen"></i>
+            </button>
+        </header>
+
+        <div class="details-main">
+            <div class="sub-logo" id="det-logo" style="overflow: hidden;">N</div>
+            <div class="sub-title" id="det-title">NETFLIX PREMIUM</div>
+            <div class="sub-price">
+                <span id="det-price-val">$15.99</span><span class="sub-cycle" id="det-price-cyc">/mes</span>
+            </div>
+
+            <div class="status-pill active-pill" id="det-status">
+                <div class="dot green-dot"></div> ACTIVA
+            </div>
+
+            <div class="details-grid">
+                <div class="grid-card">
+                    <span class="card-label">COSTE ANUAL</span>
+                    <strong class="card-val" id="det-annual">$191.88</strong>
+                </div>
+                <div class="grid-card">
+                    <span class="card-label">PRÓXIMO COBRO</span>
+                    <strong class="card-val" id="det-next">Oct 24</strong>
+                </div>
+                <div class="grid-card">
+                    <span class="card-label">COBRO ANTERIOR</span>
+                    <strong class="card-val" id="det-prev">Sep 24</strong>
+                </div>
+                <div class="grid-card">
+                    <span class="card-label">CATEGORÍA</span>
+                    <strong class="card-val" id="det-cat">CATEGORÍA</strong>
+                </div>
+            </div>
+
+            <div class="recent-activity-label">ACTIVIDAD RECIENTE</div>
+            <!-- Actividad vacia visualmente -->
+
+            <button class="btn-outline">
+                INSTRUCCIONES PARA CANCELAR
+                <i data-lucide="arrow-up-right"></i>
+            </button>
+
+            <button class="btn-text-danger mt-auto" onclick="deleteCurrentSub()">ELIMINAR SUSCRIPCIÓN</button>
+        </div>
+    </div>
+
+    <!-- PANTALLA AJUSTES -->
+    <div id="view-settings" class="view bg-light">
+        <header class="settings-header">
+            <button class="icon-btn" onclick="showView('view-home')">
+                <i data-lucide="chevron-left"></i>
+            </button>
+            <h2>AJUSTES</h2>
+            <div style="width: 24px;"></div>
+        </header>
+
+        <div class="settings-section">
+            <div class="section-title">PREFERENCIAS GLOBALES</div>
+            <div class="settings-item">
+                <div class="si-info">
+                    <strong>Moneda Base</strong>
+                    <span>Usada para proyecciones mensuales</span>
+                </div>
+                <select id="settings-currency" onchange="updateCurrency()">
+                    <option value="$">USD ($)</option>
+                    <option value="€">EUR (€)</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="settings-section">
+            <div class="section-title">ALERTAS</div>
+            <div class="settings-item">
+                <div class="si-info">
+                    <strong>1 día antes</strong>
+                    <span>Notificación push a las 9:00 AM</span>
+                </div>
+                <div class="toggle"><input type="checkbox" checked> <span class="slider"></span></div>
+            </div>
+            <div class="settings-item">
+                <div class="si-info">
+                    <strong>Día del cargo</strong>
+                    <span>Notificación push a las 9:00 AM</span>
+                </div>
+                <div class="toggle"><input type="checkbox" id="t-cargo" checked> <span class="slider"></span></div>
+            </div>
+        </div>
+
+        <div class="settings-section">
+            <div class="section-title">SOBERANÍA DE DATOS</div>
+            <div class="settings-item clickable" onclick="exportData()">
+                <strong>Exportar CSV</strong>
+                <i data-lucide="arrow-right"></i>
+            </div>
+            <div class="settings-item clickable" onclick="deleteAllData()">
+                <div class="si-info">
+                    <strong class="text-danger">BORRAR TODO</strong>
+                    <span class="text-danger">Eliminar todos los registros permanentemente</span>
+                </div>
+                <i data-lucide="trash-2" class="text-danger"></i>
+            </div>
+        </div>
+
+        <div class="settings-footer">
+            <div class="audit-box">C</div>
+            <div class="audit-text">CLARIDAD TOTAL // V1.0.4 [AUDITORÍA]</div>
+            <div class="audit-id">ID: 884-291-00X</div>
+        </div>
+
+        <!-- NAVBAR SETTINGS -->
+        <nav class="bottom-nav">
+            <div class="nav-item" onclick="showView('view-home')">
+                <i data-lucide="clock"></i>
+                <span>CRONOGRAMA</span>
+            </div>
+            <div class="nav-item active" onclick="showView('view-settings')">
+                <i data-lucide="settings"></i>
+                <span>AJUSTES</span>
+            </div>
+            <button class="fab-center text-fab" onclick="showAdd()"><i data-lucide="plus"></i></button>
+        </nav>
+    </div>
+
+    <div id="toast" class="toast">Mensaje</div>
+
+    <script src="app.js"></script>
+</body>
+
+</html>
