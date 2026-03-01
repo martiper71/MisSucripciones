@@ -59,11 +59,89 @@
             <i data-lucide="plus"></i>
         </button>
         <nav class="bottom-nav">
-            <div class="nav-item active" onclick="showView('view-home')">
+            <div class="nav-item" id="nav-home" onclick="showView('view-home')">
                 <i data-lucide="calendar"></i>
                 <span>INICIO</span>
             </div>
-            <div class="nav-item" onclick="alert('Estadísticas en desarrollo')">
+            <div class="nav-item" id="nav-stats" onclick="showView('view-stats')">
+                <i data-lucide="bar-chart-2"></i>
+                <span>ESTADÍSTICAS</span>
+            </div>
+        </nav>
+    </div>
+
+    <!-- PANTALLA ESTADÍSTICAS -->
+    <div id="view-stats" class="view">
+        <header class="main-header">
+            <div class="header-top">
+                <span class="header-t">ESTADÍSTICAS</span>
+                <button class="icon-btn" onclick="showView('view-settings')">
+                    <i data-lucide="settings"></i>
+                </button>
+            </div>
+            <div class="monthly-spend">
+                <h1 id="stats-total-monthly">-0.00€</h1>
+                <span class="subtitle">GASTO MENSUAL TOTAL</span>
+            </div>
+        </header>
+
+        <section class="main-content stats-content">
+            <div class="stats-card-grid stats-grid-3">
+                <div class="stats-mini-card">
+                    <span class="mini-label">TOTAL</span>
+                    <strong id="stats-sub-count">0</strong>
+                </div>
+                <div class="stats-mini-card">
+                    <span class="mini-label">ACTIVAS</span>
+                    <strong id="stats-active-count" style="color: var(--success)">0</strong>
+                </div>
+                <div class="stats-mini-card clickable-card" onclick="showCanceledList()">
+                    <span class="mini-label">CANCELADAS</span>
+                    <strong id="stats-canceled-count" style="color: var(--danger)">0</strong>
+                </div>
+            </div>
+
+            <div class="stats-mini-card" style="margin-bottom: 30px;">
+                <span class="mini-label">GASTO ANUAL ESTIMADO</span>
+                <strong id="stats-total-annual">-0.00€</strong>
+            </div>
+
+            <div class="stats-section">
+                <div class="section-title">SUSCRIPCIÓN MÁS BARATA</div>
+                <div id="stats-cheapest-sub" class="top-sub-display">
+                    <!-- Inyectado aquí -->
+                </div>
+            </div>
+
+            <div class="stats-section">
+                <div class="section-title">SUSCRIPCIÓN MÁS CARA</div>
+                <div id="stats-top-sub" class="top-sub-display">
+                    <!-- Inyectado aquí -->
+                </div>
+            </div>
+
+            <div class="stats-section">
+                <div class="section-title">SUSCRIPCIÓN MÁS ANTIGUA</div>
+                <div id="stats-oldest-sub" class="top-sub-display">
+                    <!-- Inyectado aquí -->
+                </div>
+            </div>
+
+            <div class="stats-section">
+                <div class="section-title">SUSCRIPCIÓN MÁS RECIENTE</div>
+                <div id="stats-newest-sub" class="top-sub-display">
+                    <!-- Inyectado aquí -->
+                </div>
+            </div>
+        </section>
+
+        <!-- NAVBAR -->
+        <nav class="bottom-nav">
+            <div class="nav-item" id="nav-home-stats" onclick="showView('view-home')">
+                <i data-lucide="calendar"></i>
+                <span>INICIO</span>
+            </div>
+            <div class="nav-item active" id="nav-stats-stats" onclick="showView('view-stats')">
                 <i data-lucide="bar-chart-2"></i>
                 <span>ESTADÍSTICAS</span>
             </div>
@@ -174,24 +252,43 @@
                     <strong class="card-val" id="det-prev">Sep 24</strong>
                 </div>
                 <div class="grid-card">
-                    <span class="card-label">CATEGORÍA</span>
-                    <strong class="card-val" id="det-cat">CATEGORÍA</strong>
+                    <span class="card-label">INICIO SUSCRIPCIÓN</span>
+                    <strong class="card-val" id="det-cat">FECHA</strong>
                 </div>
             </div>
 
-            <div class="recent-activity-label">ACTIVIDAD RECIENTE</div>
-            <!-- Actividad vacia visualmente -->
-
-            <button class="btn-outline">
-                INSTRUCCIONES PARA CANCELAR
-                <i data-lucide="arrow-up-right"></i>
+            <button class="btn-action-outline btn-warning" id="btn-cancel-sub" onclick="cancelCurrentSub()">
+                CANCELAR SUSCRIPCIÓN
+                <i data-lucide="x-circle"></i>
             </button>
 
-            <button class="btn-text-danger mt-auto" onclick="deleteCurrentSub()">ELIMINAR SUSCRIPCIÓN</button>
+            <button class="btn-action-outline btn-danger" onclick="deleteCurrentSub()">
+                ELIMINAR SUSCRIPCIÓN
+                <i data-lucide="trash-2"></i>
+            </button>
         </div>
     </div>
 
     <!-- PANTALLA AJUSTES -->
+    <!-- PANTALLA LISTA CANCELADAS -->
+    <div id="view-canceled" class="view">
+        <header class="main-header">
+            <div class="header-top">
+                <button class="icon-btn" onclick="showView('view-stats')">
+                    <i data-lucide="chevron-left"></i>
+                </button>
+                <span class="header-t">SUSCRIPCIONES CANCELADAS</span>
+                <div style="width: 24px;"></div>
+            </div>
+        </header>
+
+        <section class="main-content" id="canceled-list-container">
+            <!-- Las suscripciones canceladas se inyectarán aquí -->
+        </section>
+
+        <div class="timeline-end">FIN DEL ARCHIVO</div>
+    </div>
+
     <div id="view-settings" class="view bg-light">
         <header class="settings-header">
             <button class="icon-btn" onclick="showView('view-home')">

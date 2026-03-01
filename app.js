@@ -32,9 +32,23 @@ function showView(viewId) {
     document.querySelectorAll('.view').forEach(el => el.classList.remove('active'));
     document.getElementById(viewId).classList.add('active');
 
+    // Update Bottom Nav active state
+    document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
+
+    if (viewId === 'view-home') {
+        document.getElementById('nav-home').classList.add('active');
+        document.getElementById('nav-home-stats').classList.add('active');
+    } else if (viewId === 'view-stats') {
+        document.getElementById('nav-stats').classList.add('active');
+        document.getElementById('nav-stats-stats').classList.add('active');
+    }
+
     // Trigger resize or specific loaders
     if (viewId === 'view-home' && pb.authStore.isValid) {
         loadSuscripciones();
+    }
+    if (viewId === 'view-stats') {
+        renderStats();
     }
 }
 
@@ -52,6 +66,56 @@ function showAdd() {
 
     setCycle('mensual');
     showView('view-add');
+}
+
+function showCanceledList() {
+    const container = document.getElementById('canceled-list-container');
+    container.innerHTML = '';
+
+    const canceledSubs = suscripciones.filter(s => s.estado === 'cancelada');
+
+    if (canceledSubs.length === 0) {
+        container.innerHTML = '<p class="hint" style="text-align: center; margin-top: 40px; padding: 20px;">No tienes suscripciones canceladas en tu historial.</p>';
+        showView('view-canceled');
+        return;
+    }
+
+    // Ordenar por nombre
+    canceledSubs.sort((a, b) => a.nombre.localeCompare(b.nombre));
+
+    canceledSubs.forEach(sub => {
+        const cat = getCategoryGuess(sub.nombre);
+        let logoPath = '';
+        if (sub.logo) {
+            logoPath = `${PB_URL}/api/files/${sub.collectionId}/${sub.id}/${sub.logo}`;
+        }
+
+        const logoHtml = `
+            <div class="logo-wrapper">
+                <div class="sub-logo-small" style="background: #f4f4f4; color: #000; filter: grayscale(1); opacity: 0.6;">
+                    ${logoPath ?
+                `<img src="${logoPath}" onerror="this.style.display='none'; this.parentElement.textContent='${sub.nombre.charAt(0).toUpperCase()}'; this.parentElement.style.background='#000'; this.parentElement.style.color='#fff'">` :
+                `<span>${sub.nombre.charAt(0).toUpperCase()}</span>`}
+                </div>
+            </div>
+        `;
+
+        const itemHtml = `
+            <div class="sub-item" onclick="openDetails('${sub.id}')" style="opacity: 0.8;">
+                <div class="sub-date" style="display: none;"></div>
+                ${logoHtml}
+                <div class="sub-info" style="margin-left: 0;">
+                    <strong style="color: #666;">${sub.nombre}</strong>
+                    <span style="color: #999;">${cat} • CANCELADA</span>
+                </div>
+                <div class="sub-price" style="color: #999; text-decoration: line-through;">${formatCurrency(sub.cantidad)}${currentCurrency}</div>
+            </div>
+        `;
+        container.insertAdjacentHTML('beforeend', itemHtml);
+    });
+
+    showView('view-canceled');
+    lucide.createIcons();
 }
 
 function previewSelectedFile() {
@@ -181,6 +245,9 @@ function renderHome() {
     };
 
     suscripciones.forEach(sub => {
+        // Only count and show active subscriptions
+        if (sub.estado === 'cancelada') return;
+
         let cantidad = parseFloat(sub.cantidad || 0);
         totalMensual += calculateMonthlyCost(cantidad, sub.ciclo);
 
@@ -239,11 +306,11 @@ function renderHome() {
 
             const logoHtml = `
                 <div class="logo-wrapper">
-                    ${logoPath ? `
-                    <div class="sub-logo-small">
-                        <img src="${logoPath}">
-                    </div>` : `
-                    <div class="sub-dot ${dotClass}"></div>`}
+                    <div class="sub-logo-small" style="background: #f4f4f4; color: #000">
+                        ${logoPath ?
+                    `<img src="${logoPath}" onerror="this.style.display='none'; this.parentElement.textContent='${sub.nombre.charAt(0).toUpperCase()}'; this.parentElement.style.background='#000'; this.parentElement.style.color='#fff'">` :
+                    `<span>${sub.nombre.charAt(0).toUpperCase()}</span>`}
+                    </div>
                 </div>
             `;
 
@@ -283,11 +350,13 @@ function openDetails(id) {
     logoContainer.style.background = 'transparent';
 
     if (logoPath) {
-        logoContainer.innerHTML = `<img src="${logoPath}">`;
-        logoContainer.style.background = '#000';
+        logoContainer.innerHTML = `<img src="${logoPath}" onerror="this.style.display='none'; this.parentElement.textContent='${currentSub.nombre.charAt(0).toUpperCase()}'; this.parentElement.style.background='#000'; this.parentElement.style.color='#fff'">`;
+        logoContainer.style.background = '#f0f0f0';
+        logoContainer.style.color = '#000';
     } else {
         logoContainer.textContent = currentSub.nombre.charAt(0).toUpperCase();
         logoContainer.style.background = '#000';
+        logoContainer.style.color = '#fff';
     }
     document.getElementById('det-title').textContent = currentSub.nombre.toUpperCase();
     document.getElementById('det-price-val').textContent = `${formatCurrency(currentSub.cantidad)}${currentCurrency}`;
@@ -308,9 +377,39 @@ function openDetails(id) {
     document.getElementById('det-next').textContent = nextBill.toLocaleString('es-ES', { month: 'short', year: '2-digit' }).replace('.', ' ');
     document.getElementById('det-prev').textContent = prevBill.toLocaleString('es-ES', { month: 'short', year: '2-digit' }).replace('.', ' ');
 
-    document.getElementById('det-cat').textContent = cat;
+    const startDate = new Date(currentSub.primeraFactura);
+    document.getElementById('det-cat').textContent = startDate.toLocaleDateString('es-ES', { day: '2-digit', month: 'short', year: '2-digit' }).replace('.', '');
+
+    const cancelBtn = document.getElementById('btn-cancel-sub');
+    const statusPill = document.getElementById('det-status');
+
+    if (currentSub.estado === 'cancelada') {
+        cancelBtn.style.display = 'none';
+        statusPill.innerHTML = '<div class="dot red-dot"></div> CANCELADA';
+        statusPill.className = 'status-pill canceled-pill';
+    } else {
+        cancelBtn.style.display = 'flex';
+        cancelBtn.innerHTML = 'CANCELAR SUSCRIPCIÓN <i data-lucide="x-circle"></i>';
+        statusPill.innerHTML = '<div class="dot green-dot"></div> ACTIVA';
+        statusPill.className = 'status-pill active-pill';
+    }
+    lucide.createIcons();
 
     showView('view-details');
+}
+
+async function cancelCurrentSub() {
+    if (!currentSub) return;
+    if (!confirm(`¿Estás seguro de que quieres cancelar la suscripción a ${currentSub.nombre}? Ya no aparecerá en tus próximos pagos.`)) return;
+
+    try {
+        await pb.collection('suscripciones').update(currentSub.id, { estado: 'cancelada' });
+        showToast("Suscripción cancelada");
+        await loadSuscripciones();
+        showView('view-home');
+    } catch (err) {
+        alert("Error al cancelar: " + err.message);
+    }
 }
 
 let activeCycle = 'mensual';
@@ -335,6 +434,9 @@ async function saveSubscription() {
     formData.append('ciclo', activeCycle);
     formData.append('primeraFactura', date + " 12:00:00.000Z");
     formData.append('user', pb.authStore.model.id);
+    if (!currentSub) {
+        formData.append('estado', 'activa');
+    }
 
     const logoFile = document.getElementById('logo-file-input').files[0];
     if (logoFile) {
@@ -398,6 +500,106 @@ async function deleteCurrentSub() {
     } catch (err) {
         alert("Error eliminando: " + err.message);
     }
+}
+
+function renderStats() {
+    if (suscripciones.length === 0) {
+        document.getElementById('stats-total-monthly').textContent = `0.00${currentCurrency}`;
+        document.getElementById('stats-total-annual').textContent = `0.00${currentCurrency}`;
+        document.getElementById('stats-sub-count').textContent = '0';
+        document.getElementById('stats-categories-container').innerHTML = '<p class="hint">No hay datos suficientes</p>';
+        document.getElementById('stats-top-sub').innerHTML = '';
+        return;
+    }
+
+    let totalMonthly = 0;
+    let totalAnnual = 0;
+
+    // Solo estadísticas de suscripciones activas
+    const activeSubs = suscripciones.filter(s => s.estado !== 'cancelada');
+
+    if (activeSubs.length === 0) {
+        document.getElementById('stats-total-monthly').textContent = `0.00${currentCurrency}`;
+        document.getElementById('stats-total-annual').textContent = `0.00${currentCurrency}`;
+        document.getElementById('stats-sub-count').textContent = '0';
+        document.getElementById('stats-cheapest-sub').innerHTML = '';
+        document.getElementById('stats-top-sub').innerHTML = '';
+        document.getElementById('stats-oldest-sub').innerHTML = '';
+        document.getElementById('stats-newest-sub').innerHTML = '';
+        return;
+    }
+
+    let topSub = activeSubs[0];
+    let topMonthlyVal = 0;
+    let cheapestSub = activeSubs[0];
+    let cheapestMonthlyVal = Infinity;
+
+    activeSubs.forEach(sub => {
+        const monthlyCost = calculateMonthlyCost(sub.cantidad, sub.ciclo);
+        totalMonthly += monthlyCost;
+
+        if (monthlyCost > topMonthlyVal) {
+            topMonthlyVal = monthlyCost;
+            topSub = sub;
+        }
+        if (monthlyCost < cheapestMonthlyVal) {
+            cheapestMonthlyVal = monthlyCost;
+            cheapestSub = sub;
+        }
+    });
+
+    totalAnnual = totalMonthly * 12;
+
+    document.getElementById('stats-total-monthly').textContent = `${formatCurrency(totalMonthly)}${currentCurrency}`;
+    document.getElementById('stats-total-annual').textContent = `${formatCurrency(totalAnnual)}${currentCurrency}`;
+
+    // Contadores detallados
+    document.getElementById('stats-sub-count').textContent = suscripciones.length;
+    document.getElementById('stats-active-count').textContent = activeSubs.length;
+    document.getElementById('stats-canceled-count').textContent = suscripciones.length - activeSubs.length;
+
+    // Find Oldest and Newest (only among active ones)
+    const sortedByDate = [...activeSubs].sort((a, b) => new Date(a.primeraFactura) - new Date(b.primeraFactura));
+    const oldestSub = sortedByDate[0];
+    const newestSub = sortedByDate[sortedByDate.length - 1];
+
+    function renderSubCard(containerId, sub, footerText) {
+        const container = document.getElementById(containerId);
+        if (!container) return;
+        if (!sub) {
+            container.innerHTML = '<p style="color: var(--text-muted); font-size: 13px; padding: 10px;">No hay datos</p>';
+            return;
+        }
+
+        let logoPath = '';
+        if (sub.logo) {
+            logoPath = `${PB_URL}/api/files/${sub.collectionId}/${sub.id}/${sub.logo}`;
+        }
+
+        container.innerHTML = `
+            <div class="top-sub-card">
+                <div class="sub-logo-small" style="background: #f4f4f4; color: #000">
+                    ${logoPath ?
+                `<img src="${logoPath}" onerror="this.style.display='none'; this.parentElement.textContent='${sub.nombre.charAt(0).toUpperCase()}'; this.parentElement.style.background='#000'; this.parentElement.style.color='#fff'">` :
+                sub.nombre.charAt(0).toUpperCase()}
+                </div>
+                <div class="sub-info">
+                    <strong>${sub.nombre}</strong>
+                    <span>${footerText}</span>
+                </div>
+            </div>
+        `;
+    }
+
+    renderSubCard('stats-cheapest-sub', cheapestSub, `${formatCurrency(calculateMonthlyCost(cheapestSub.cantidad, cheapestSub.ciclo))}${currentCurrency} al mes`);
+    renderSubCard('stats-top-sub', topSub, `${formatCurrency(calculateMonthlyCost(topSub.cantidad, topSub.ciclo))}${currentCurrency} al mes`);
+
+    // Formatear fechas para los otros dos
+    const oldestDate = new Date(oldestSub.primeraFactura).toLocaleDateString('es-ES', { day: '2-digit', month: 'short', year: '2-digit' }).replace('.', '');
+    const newestDate = new Date(newestSub.primeraFactura).toLocaleDateString('es-ES', { day: '2-digit', month: 'short', year: '2-digit' }).replace('.', '');
+
+    renderSubCard('stats-oldest-sub', oldestSub, `Primer pago: ${oldestDate}`);
+    renderSubCard('stats-newest-sub', newestSub, `Primer pago: ${newestDate}`);
 }
 
 // SETUP Y AJUSTES
