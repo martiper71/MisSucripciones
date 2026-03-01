@@ -43,7 +43,7 @@
                 </button>
             </div>
             <div class="monthly-spend">
-                <h1 id="total-monthly-spend">-$0.00</h1>
+                <h1 id="total-monthly-spend">-0.00€</h1>
                 <span class="subtitle">GASTO MENSUAL</span>
             </div>
         </header>
@@ -82,14 +82,14 @@
         <div class="form-container">
             <div class="input-group">
                 <label>NOMBRE DEL SERVICIO</label>
-                <input type="text" id="add-name" placeholder="Netflix...">
+                <input type="text" id="add-name" placeholder="Teclea servicio ...">
             </div>
 
             <div class="input-group">
                 <label>CANTIDAD</label>
                 <div class="currency-input">
-                    <span class="currency-symbol" id="currency-symbol-add">$</span>
                     <input type="number" id="add-amount" placeholder="0.00" step="0.01">
+                    <span class="currency-symbol" id="currency-symbol-add">€</span>
                 </div>
             </div>
 
@@ -97,23 +97,13 @@
                 <label>CICLO DE FACTURACIÓN</label>
                 <div class="tabs">
                     <div class="tab active" data-cycle="mensual" onclick="setCycle('mensual')">MENSUAL</div>
+                    <div class="tab" data-cycle="trimestral" onclick="setCycle('trimestral')">TRIMESTRAL</div>
+                    <div class="tab" data-cycle="semestral" onclick="setCycle('semestral')">SEMESTRAL</div>
                     <div class="tab" data-cycle="anual" onclick="setCycle('anual')">ANUAL</div>
-                    <div class="tab" data-cycle="semanal" onclick="setCycle('semanal')">SEMANAL</div>
                 </div>
             </div>
 
-            <div class="input-group">
-                <label>LOGO</label>
-                <div style="display: flex; gap: 10px; align-items: flex-end;">
-                    <div class="sub-logo-preview" id="preview-logo">N</div>
-                    <div style="flex: 1;">
-                        <input type="text" id="add-logo" placeholder="URL de la imagen (opcional)"
-                            style="font-size: 14px;">
-                    </div>
-                    <button class="text-btn text-primary" type="button" onclick="autoBuscarLogo()"
-                        style="padding: 10px; border: 1px solid var(--border-color); border-radius: 4px; font-size: 12px; margin-bottom: 5px;">Auto</button>
-                </div>
-            </div>
+
 
             <div class="input-group">
                 <label>PRIMERA FACTURA</label>
@@ -123,13 +113,27 @@
                 </div>
                 <p class="hint">La próxima fecha de cobro se calculará automáticamente.</p>
             </div>
+
+            <div class="input-group">
+                <label>LOGO DEL SERVICIO</label>
+                <div class="logo-upload-wrap">
+                    <div class="logo-preview-big" id="logo-preview-img">
+                        <i data-lucide="image"></i>
+                    </div>
+                    <div class="logo-upload-controls">
+                        <button type="button" class="text-btn text-primary"
+                            onclick="document.getElementById('logo-file-input').click()">
+                            ELEGIR IMAGEN
+                        </button>
+                        <input type="file" id="logo-file-input" accept="image/*" style="display: none;"
+                            onchange="previewSelectedFile()">
+                        <p class="hint">Toca para subir un logo de tu galería o PC.</p>
+                    </div>
+                </div>
+            </div>
         </div>
 
         <div class="add-footer">
-            <div class="warning-msg">
-                <i data-lucide="info"></i>
-                <span>CONFIRMA LOS DATOS ANTES DE GUARDAR</span>
-            </div>
         </div>
     </div>
 
@@ -149,7 +153,7 @@
             <div class="sub-logo" id="det-logo" style="overflow: hidden;">N</div>
             <div class="sub-title" id="det-title">NETFLIX PREMIUM</div>
             <div class="sub-price">
-                <span id="det-price-val">$15.99</span><span class="sub-cycle" id="det-price-cyc">/mes</span>
+                <span id="det-price-val">15.99€</span><span class="sub-cycle" id="det-price-cyc">/mes</span>
             </div>
 
             <div class="status-pill active-pill" id="det-status">
@@ -205,63 +209,33 @@
                     <span>Usada para proyecciones mensuales</span>
                 </div>
                 <select id="settings-currency" onchange="updateCurrency()">
+                    <option value="€" selected>EUR (€)</option>
                     <option value="$">USD ($)</option>
-                    <option value="€">EUR (€)</option>
                 </select>
             </div>
         </div>
 
-        <div class="settings-section">
-            <div class="section-title">ALERTAS</div>
-            <div class="settings-item">
-                <div class="si-info">
-                    <strong>1 día antes</strong>
-                    <span>Notificación push a las 9:00 AM</span>
-                </div>
-                <div class="toggle"><input type="checkbox" checked> <span class="slider"></span></div>
-            </div>
-            <div class="settings-item">
-                <div class="si-info">
-                    <strong>Día del cargo</strong>
-                    <span>Notificación push a las 9:00 AM</span>
-                </div>
-                <div class="toggle"><input type="checkbox" id="t-cargo" checked> <span class="slider"></span></div>
-            </div>
-        </div>
+
 
         <div class="settings-section">
-            <div class="section-title">SOBERANÍA DE DATOS</div>
+            <div class="section-title">DATOS Y SESIÓN</div>
             <div class="settings-item clickable" onclick="exportData()">
                 <strong>Exportar CSV</strong>
                 <i data-lucide="arrow-right"></i>
             </div>
-            <div class="settings-item clickable" onclick="deleteAllData()">
+            <div class="settings-item clickable" onclick="logout()">
                 <div class="si-info">
-                    <strong class="text-danger">BORRAR TODO</strong>
-                    <span class="text-danger">Eliminar todos los registros permanentemente</span>
+                    <strong class="text-danger">CERRAR SESIÓN</strong>
+                    <span>Salir de tu cuenta de forma segura</span>
                 </div>
-                <i data-lucide="trash-2" class="text-danger"></i>
+                <i data-lucide="log-out" class="text-danger"></i>
             </div>
         </div>
 
         <div class="settings-footer">
-            <div class="audit-box">C</div>
-            <div class="audit-text">CLARIDAD TOTAL // V1.0.4 [AUDITORÍA]</div>
-            <div class="audit-id">ID: 884-291-00X</div>
+            <div class="creator-text">Creado por Martiper</div>
+            <img src="cartoon.png" alt="Martiper" class="creator-img">
         </div>
-
-        <!-- NAVBAR SETTINGS -->
-        <nav class="bottom-nav">
-            <div class="nav-item" onclick="showView('view-home')">
-                <i data-lucide="clock"></i>
-                <span>CRONOGRAMA</span>
-            </div>
-            <div class="nav-item active" onclick="showView('view-settings')">
-                <i data-lucide="settings"></i>
-                <span>AJUSTES</span>
-            </div>
-            <button class="fab-center text-fab" onclick="showAdd()"><i data-lucide="plus"></i></button>
-        </nav>
     </div>
 
     <div id="toast" class="toast">Mensaje</div>

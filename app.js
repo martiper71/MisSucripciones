@@ -4,7 +4,7 @@ const pb = new PocketBase(PB_URL);
 
 let suscripciones = [];
 let currentSub = null;
-let currentCurrency = localStorage.getItem('suscripciones_currency') || '$';
+let currentCurrency = localStorage.getItem('suscripciones_currency') || '€';
 
 // INICIO APP
 window.addEventListener('DOMContentLoaded', async () => {
@@ -33,7 +33,9 @@ function showView(viewId) {
     document.getElementById(viewId).classList.add('active');
 
     // Trigger resize or specific loaders
-    if (viewId === 'view-home' && pb.authStore.isValid) loadSuscripciones();
+    if (viewId === 'view-home' && pb.authStore.isValid) {
+        loadSuscripciones();
+    }
 }
 
 function showAdd() {
@@ -42,38 +44,30 @@ function showAdd() {
     document.getElementById('add-name').value = '';
     document.getElementById('add-amount').value = '';
     document.getElementById('add-date').value = getTodayDateString();
-    document.getElementById('add-logo').value = '';
-    updateLogoPreview();
+
+    // Reset logo upload
+    document.getElementById('logo-file-input').value = '';
+    document.getElementById('logo-preview-img').innerHTML = '<i data-lucide="image"></i>';
+    lucide.createIcons();
+
     setCycle('mensual');
     showView('view-add');
 }
 
-document.getElementById('add-logo').addEventListener('input', updateLogoPreview);
-document.getElementById('add-name').addEventListener('input', updateLogoPreview);
+function previewSelectedFile() {
+    const file = document.getElementById('logo-file-input').files[0];
+    const preview = document.getElementById('logo-preview-img');
 
-function updateLogoPreview() {
-    const url = document.getElementById('add-logo').value.trim();
-    const preview = document.getElementById('preview-logo');
-    const name = document.getElementById('add-name').value.trim();
-
-    if (url) {
-        preview.innerHTML = `<img src="${url}" onerror="this.outerHTML='${name ? name.charAt(0).toUpperCase() : '?'}'">`;
+    if (file) {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            preview.innerHTML = `<img src="${e.target.result}">`;
+        };
+        reader.readAsDataURL(file);
     } else {
-        preview.textContent = name ? name.charAt(0).toUpperCase() : 'N';
+        preview.innerHTML = '<i data-lucide="image"></i>';
+        lucide.createIcons();
     }
-}
-
-function autoBuscarLogo() {
-    const name = document.getElementById('add-name').value.trim();
-    if (!name) return alert("Escribe primero el nombre del servicio");
-
-    let domain = name.toLowerCase().replace(/[^a-z0-9]/g, '');
-    if (domain === 'adobecc' || domain === 'adobe') domain = 'adobe';
-    if (domain === 'icloud') domain = 'apple';
-
-    const url = `https://t3.gstatic.com/faviconV2?client=SOCIAL&type=FAVICON&fallback_opts=TYPE,SIZE,URL&url=http://${domain}.com&size=128`;
-    document.getElementById('add-logo').value = url;
-    updateLogoPreview();
 }
 
 // AUTH
@@ -129,8 +123,9 @@ function getNextBill(primeraFacturaStr, ciclo) {
 
     while (d < today) {
         if (ciclo === 'mensual') d.setMonth(d.getMonth() + 1);
+        else if (ciclo === 'trimestral') d.setMonth(d.getMonth() + 3);
+        else if (ciclo === 'semestral') d.setMonth(d.getMonth() + 6);
         else if (ciclo === 'anual') d.setFullYear(d.getFullYear() + 1);
-        else if (ciclo === 'semanal') d.setDate(d.getDate() + 7);
         else break;
     }
     return d;
@@ -139,15 +134,17 @@ function getNextBill(primeraFacturaStr, ciclo) {
 function getPrevBill(nextBillDate, ciclo) {
     let d = new Date(nextBillDate);
     if (ciclo === 'mensual') d.setMonth(d.getMonth() - 1);
+    else if (ciclo === 'trimestral') d.setMonth(d.getMonth() - 3);
+    else if (ciclo === 'semestral') d.setMonth(d.getMonth() - 6);
     else if (ciclo === 'anual') d.setFullYear(d.getFullYear() - 1);
-    else if (ciclo === 'semanal') d.setDate(d.getDate() - 7);
     return d;
 }
 
 function calculateMonthlyCost(cantidad, ciclo) {
     if (ciclo === 'mensual') return cantidad;
+    if (ciclo === 'trimestral') return cantidad / 3;
+    if (ciclo === 'semestral') return cantidad / 6;
     if (ciclo === 'anual') return cantidad / 12;
-    if (ciclo === 'semanal') return cantidad * 4.3333; // Avg weeks in month
     return cantidad;
 }
 
@@ -174,12 +171,12 @@ function renderHome() {
     const oneWeek = new Date(today);
     oneWeek.setDate(today.getDate() + 7);
 
-    const twoWeeks = new Date(today);
-    twoWeeks.setDate(today.getDate() + 14);
+    const endOfMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+    endOfMonth.setHours(23, 59, 59, 999);
 
     const groups = {
         'esta-semana': { label: 'ESTA SEMANA', total: 0, items: [] },
-        'proxima-semana': { label: 'PRÓXIMA SEMANA', total: 0, items: [] },
+        'este-mes': { label: 'ESTE MES', total: 0, items: [] },
         'mas-tarde': { label: 'MÁS TARDE', total: 0, items: [] }
     };
 
@@ -193,16 +190,16 @@ function renderHome() {
         if (nextBill <= oneWeek) {
             groups['esta-semana'].items.push(sub);
             groups['esta-semana'].total += cantidad;
-        } else if (nextBill <= twoWeeks) {
-            groups['proxima-semana'].items.push(sub);
-            groups['proxima-semana'].total += cantidad;
+        } else if (nextBill <= endOfMonth) {
+            groups['este-mes'].items.push(sub);
+            groups['este-mes'].total += cantidad;
         } else {
             groups['mas-tarde'].items.push(sub);
             groups['mas-tarde'].total += cantidad;
         }
     });
 
-    document.getElementById('total-monthly-spend').textContent = `-${currentCurrency}${formatCurrency(totalMensual)}`;
+    document.getElementById('total-monthly-spend').textContent = `-${formatCurrency(totalMensual)}${currentCurrency}`;
 
     const container = document.getElementById('subs-list-container');
     container.innerHTML = '';
@@ -217,7 +214,7 @@ function renderHome() {
         const headerHtml = `
             <div class="group-header">
                 <span>${group.label}</span>
-                <span class="right">TOTAL ${currentCurrency}${formatCurrency(group.total)}</span>
+                <span class="right">TOTAL ${formatCurrency(group.total)}${currentCurrency}</span>
             </div>
         `;
         container.insertAdjacentHTML('beforeend', headerHtml);
@@ -235,14 +232,20 @@ function renderHome() {
 
             const cat = getCategoryGuess(sub.nombre);
 
-            let logoHtml = `<div class="sub-dot ${dotClass}"></div>`;
-            if (sub.logoUrl) {
-                logoHtml = `
-                    <div class="sub-logo-small">
-                        <img src="${sub.logoUrl}" onerror="this.outerHTML=''">
-                    </div>
-                `;
+            let logoPath = '';
+            if (sub.logo) {
+                logoPath = `${PB_URL}/api/files/${sub.collectionId}/${sub.id}/${sub.logo}`;
             }
+
+            const logoHtml = `
+                <div class="logo-wrapper">
+                    ${logoPath ? `
+                    <div class="sub-logo-small">
+                        <img src="${logoPath}">
+                    </div>` : `
+                    <div class="sub-dot ${dotClass}"></div>`}
+                </div>
+            `;
 
             const itemHtml = `
                 <div class="sub-item" onclick="openDetails('${sub.id}')">
@@ -255,7 +258,7 @@ function renderHome() {
                         <strong>${sub.nombre}</strong>
                         <span>${cat} • ${sub.ciclo.toUpperCase()}</span>
                     </div>
-                    <div class="sub-price">${currentCurrency}${formatCurrency(sub.cantidad)}</div>
+                    <div class="sub-price">${formatCurrency(sub.cantidad)}${currentCurrency}</div>
                 </div>
             `;
             container.insertAdjacentHTML('beforeend', itemHtml);
@@ -271,25 +274,36 @@ function openDetails(id) {
     const nextBill = currentSub._nextBill || getNextBill(currentSub.primeraFactura, currentSub.ciclo);
     const prevBill = getPrevBill(nextBill, currentSub.ciclo);
 
+    let logoPath = '';
+    if (currentSub.logo) {
+        logoPath = `${PB_URL}/api/files/${currentSub.collectionId}/${currentSub.id}/${currentSub.logo}`;
+    }
+
     const logoContainer = document.getElementById('det-logo');
-    if (currentSub.logoUrl) {
-        logoContainer.innerHTML = `<img src="${currentSub.logoUrl}" onerror="this.outerHTML='${currentSub.nombre.charAt(0).toUpperCase()}'">`;
+    logoContainer.style.background = 'transparent';
+
+    if (logoPath) {
+        logoContainer.innerHTML = `<img src="${logoPath}">`;
+        logoContainer.style.background = '#000';
     } else {
         logoContainer.textContent = currentSub.nombre.charAt(0).toUpperCase();
+        logoContainer.style.background = '#000';
     }
     document.getElementById('det-title').textContent = currentSub.nombre.toUpperCase();
-    document.getElementById('det-price-val').textContent = `${currentCurrency}${formatCurrency(currentSub.cantidad)}`;
+    document.getElementById('det-price-val').textContent = `${formatCurrency(currentSub.cantidad)}${currentCurrency}`;
 
     let cycleSuffix = "/mes";
+    if (currentSub.ciclo === 'trimestral') cycleSuffix = "/trim";
+    if (currentSub.ciclo === 'semestral') cycleSuffix = "/sem";
     if (currentSub.ciclo === 'anual') cycleSuffix = "/año";
-    if (currentSub.ciclo === 'semanal') cycleSuffix = "/sem";
     document.getElementById('det-price-cyc').textContent = cycleSuffix;
 
     const annualCost = currentSub.ciclo === 'anual' ? currentSub.cantidad :
         currentSub.ciclo === 'mensual' ? currentSub.cantidad * 12 :
-            currentSub.cantidad * 52;
+            currentSub.ciclo === 'trimestral' ? currentSub.cantidad * 4 :
+                currentSub.cantidad * 2; // For semestral
 
-    document.getElementById('det-annual').textContent = `${currentCurrency}${formatCurrency(annualCost)}`;
+    document.getElementById('det-annual').textContent = `${formatCurrency(annualCost)}${currentCurrency}`;
 
     document.getElementById('det-next').textContent = nextBill.toLocaleString('es-ES', { month: 'short', year: '2-digit' }).replace('.', ' ');
     document.getElementById('det-prev').textContent = prevBill.toLocaleString('es-ES', { month: 'short', year: '2-digit' }).replace('.', ' ');
@@ -315,14 +329,17 @@ async function saveSubscription() {
         return alert("Por favor completa los campos correctamente");
     }
 
-    const data = {
-        nombre: name,
-        cantidad: amount,
-        ciclo: activeCycle,
-        primeraFactura: date + " 12:00:00.000Z", // Append time for PB format
-        logoUrl: document.getElementById('add-logo').value.trim(),
-        user: pb.authStore.model.id
-    };
+    const formData = new FormData();
+    formData.append('nombre', name);
+    formData.append('cantidad', amount);
+    formData.append('ciclo', activeCycle);
+    formData.append('primeraFactura', date + " 12:00:00.000Z");
+    formData.append('user', pb.authStore.model.id);
+
+    const logoFile = document.getElementById('logo-file-input').files[0];
+    if (logoFile) {
+        formData.append('logo', logoFile);
+    }
 
     const btn = document.getElementById('btn-save');
     btn.textContent = "Guardando...";
@@ -330,12 +347,13 @@ async function saveSubscription() {
 
     try {
         if (currentSub) {
-            await pb.collection('suscripciones').update(currentSub.id, data);
+            await pb.collection('suscripciones').update(currentSub.id, formData);
             showToast("Suscripción actualizada");
         } else {
-            await pb.collection('suscripciones').create(data);
+            await pb.collection('suscripciones').create(formData);
             showToast("Suscripción añadida");
         }
+
         await loadSuscripciones();
         showView('view-home');
     } catch (err) {
@@ -346,14 +364,24 @@ async function saveSubscription() {
     }
 }
 
+
+
 function editCurrentSub() {
     if (!currentSub) return;
     document.getElementById('add-modal-title').textContent = 'EDITAR SUSCRIPCIÓN';
     document.getElementById('add-name').value = currentSub.nombre;
     document.getElementById('add-amount').value = currentSub.cantidad;
     document.getElementById('add-date').value = (currentSub.primeraFactura || "").split(" ")[0] || getTodayDateString();
-    document.getElementById('add-logo').value = currentSub.logoUrl || "";
-    updateLogoPreview();
+
+    const preview = document.getElementById('logo-preview-img');
+    if (currentSub.logo) {
+        const logoPath = `${PB_URL}/api/files/${currentSub.collectionId}/${currentSub.id}/${currentSub.logo}`;
+        preview.innerHTML = `<img src="${logoPath}">`;
+    } else {
+        preview.innerHTML = '<i data-lucide="image"></i>';
+        lucide.createIcons();
+    }
+
     setCycle(currentSub.ciclo || 'mensual');
     showView('view-add');
 }
@@ -396,19 +424,10 @@ function exportData() {
     window.URL.revokeObjectURL(url);
 }
 
-async function deleteAllData() {
-    if (!confirm("Esto borrará permanentemente todas tus suscripciones. ¿ESTÁS SEGURO?")) return;
-    if (!confirm("Esta acción no se puede deshacer. Última advertencia.")) return;
-
-    try {
-        for (const sub of suscripciones) {
-            await pb.collection('suscripciones').delete(sub.id);
-        }
-        showToast("Todo eliminado");
-        await loadSuscripciones();
-    } catch (err) {
-        alert("Error borrando datos: " + err.message);
-    }
+async function logout() {
+    if (!confirm("¿Cerrar sesión?")) return;
+    pb.authStore.clear();
+    location.reload();
 }
 
 function showToast(msg) {
