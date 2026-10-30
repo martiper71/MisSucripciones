@@ -46,6 +46,25 @@
                 <h1 id="total-monthly-spend">-0.00€</h1>
                 <span class="subtitle">GASTO MENSUAL</span>
             </div>
+
+            <!-- BUSCADOR Y FILTROS -->
+            <div class="search-filter-bar">
+                <div class="search-box">
+                    <i data-lucide="search" class="search-icon"></i>
+                    <input type="text" id="home-search-input" placeholder="Buscar suscripción..." oninput="handleSearch(this.value)">
+                    <button id="search-clear-btn" class="search-clear" onclick="clearSearch()" style="display: none;">
+                        <i data-lucide="x"></i>
+                    </button>
+                </div>
+                <div class="category-pills" id="home-category-pills">
+                    <button class="pill active" data-cat="all" onclick="filterByCategory('all')">Todos</button>
+                    <button class="pill" data-cat="MULTIMEDIA" onclick="filterByCategory('MULTIMEDIA')">Multimedia</button>
+                    <button class="pill" data-cat="MÚSICA" onclick="filterByCategory('MÚSICA')">Música</button>
+                    <button class="pill" data-cat="HERRAMIENTAS" onclick="filterByCategory('HERRAMIENTAS')">Herramientas</button>
+                    <button class="pill" data-cat="SALUD Y FITNESS" onclick="filterByCategory('SALUD Y FITNESS')">Salud</button>
+                    <button class="pill" data-cat="GENERAL" onclick="filterByCategory('GENERAL')">General</button>
+                </div>
+            </div>
         </header>
 
         <section class="main-content" id="subs-list-container">
@@ -101,9 +120,17 @@
                 </div>
             </div>
 
-            <div class="stats-mini-card" style="margin-bottom: 30px;">
+            <div class="stats-mini-card" style="margin-bottom: 20px;">
                 <span class="mini-label">GASTO ANUAL ESTIMADO</span>
                 <strong id="stats-total-annual">-0.00€</strong>
+            </div>
+
+            <!-- DESGLOSE POR CATEGORÍA -->
+            <div class="stats-section">
+                <div class="section-title">GASTO MENSUAL POR CATEGORÍA</div>
+                <div id="stats-categories-container" class="categories-breakdown">
+                    <!-- Inyectado por JS -->
+                </div>
             </div>
 
             <div class="stats-section">
@@ -184,6 +211,18 @@
 
 
             <div class="input-group">
+                <label>CATEGORÍA</label>
+                <select id="add-category">
+                    <option value="AUTO">Automática (según nombre)</option>
+                    <option value="MULTIMEDIA">Multimedia (Streaming, TV)</option>
+                    <option value="MÚSICA">Música & Podcasts</option>
+                    <option value="HERRAMIENTAS">Herramientas & Software</option>
+                    <option value="SALUD Y FITNESS">Salud & Fitness</option>
+                    <option value="GENERAL">General / Otros</option>
+                </select>
+            </div>
+
+            <div class="input-group">
                 <label>PRIMERA FACTURA</label>
                 <div class="date-input-wrap">
                     <input type="date" id="add-date">
@@ -194,6 +233,12 @@
 
             <div class="input-group">
                 <label>LOGO DEL SERVICIO</label>
+                <div class="preset-logos-section">
+                    <span class="preset-label">Logos rápidos disponibles:</span>
+                    <div class="preset-logos-grid" id="preset-logos-container">
+                        <!-- Generado por JS -->
+                    </div>
+                </div>
                 <div class="logo-upload-wrap">
                     <div class="logo-preview-big" id="logo-preview-img">
                         <i data-lucide="image"></i>
@@ -201,11 +246,14 @@
                     <div class="logo-upload-controls">
                         <button type="button" class="text-btn text-primary"
                             onclick="document.getElementById('logo-file-input').click()">
-                            ELEGIR IMAGEN
+                            ELEGIR ARCHIVO
+                        </button>
+                        <button type="button" class="text-btn text-muted" id="btn-clear-logo" onclick="clearSelectedLogo()" style="display:none; margin-left: 10px;">
+                            QUITAR LOGO
                         </button>
                         <input type="file" id="logo-file-input" accept="image/*" style="display: none;"
                             onchange="previewSelectedFile()">
-                        <p class="hint">Toca para subir un logo de tu galería o PC.</p>
+                        <p class="hint">Elige un logo rápido arriba o sube tu propia imagen.</p>
                     </div>
                 </div>
             </div>
@@ -300,6 +348,17 @@
 
         <div class="settings-section">
             <div class="section-title">PREFERENCIAS GLOBALES</div>
+            <div class="settings-item">
+                <div class="si-info">
+                    <strong>Tema de la Interfaz</strong>
+                    <span>Modo claro, oscuro o automático</span>
+                </div>
+                <select id="settings-theme" onchange="updateTheme(this.value)">
+                    <option value="auto">Automático (Sistema)</option>
+                    <option value="light">Claro</option>
+                    <option value="dark">Oscuro (OLED)</option>
+                </select>
+            </div>
             <div class="settings-item">
                 <div class="si-info">
                     <strong>Moneda Base</strong>

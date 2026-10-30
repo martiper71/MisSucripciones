@@ -5,9 +5,62 @@ const pb = new PocketBase(PB_URL);
 let suscripciones = [];
 let currentSub = null;
 let currentCurrency = localStorage.getItem('suscripciones_currency') || '€';
+let currentTheme = localStorage.getItem('suscripciones_theme') || 'auto';
+let searchQuery = '';
+let selectedCategoryFilter = 'all';
+let selectedPresetLogo = null;
+
+// Logos predefinidos disponibles localmente
+const PRESET_LOGOS = [
+    { name: 'Netflix', file: 'logos/netflix.png' },
+    { name: 'Disney+', file: 'logos/disney+.png' },
+    { name: 'HBO Max', file: 'logos/hbomax.png' },
+    { name: 'YouTube', file: 'logos/youtube.png' },
+    { name: 'ChatGPT', file: 'logos/chatgpt.png' },
+    { name: 'Gemini', file: 'logos/gemini.png' },
+    { name: 'Bitwarden', file: 'logos/bitwarden.png' },
+    { name: 'NordVPN', file: 'logos/nordvpn.png' },
+    { name: 'Photoshop', file: 'logos/photoshop.png' },
+    { name: 'Infuse', file: 'logos/infuse.png' },
+    { name: 'El País', file: 'logos/elpais.png' },
+    { name: 'Telegram', file: 'logos/telegram.png' },
+    { name: 'IPTV', file: 'logos/iptv.png' },
+    { name: 'Parcel', file: 'logos/parcel.png' },
+    { name: 'Retouch', file: 'logos/retouch.png' },
+    { name: 'TinyMediaManager', file: 'logos/tinymediamanager.png' }
+];
+
+// GESTIÓN DEL TEMA (Dark / Light / Auto)
+function applyTheme(theme) {
+    if (theme === 'auto') {
+        const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+        document.documentElement.setAttribute('data-theme', prefersDark ? 'dark' : 'light');
+    } else {
+        document.documentElement.setAttribute('data-theme', theme);
+    }
+}
+
+function updateTheme(theme) {
+    currentTheme = theme;
+    localStorage.setItem('suscripciones_theme', theme);
+    applyTheme(theme);
+}
 
 // INICIO APP
 window.addEventListener('DOMContentLoaded', async () => {
+    // Aplicar tema guardado
+    applyTheme(currentTheme);
+    const themeSelect = document.getElementById('settings-theme');
+    if (themeSelect) themeSelect.value = currentTheme;
+
+    // Escuchar cambios de preferencia del sistema si está en 'auto'
+    if (window.matchMedia) {
+        window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
+            if (currentTheme === 'auto') applyTheme('auto');
+        });
+    }
+
+    renderPresetLogos();
     lucide.createIcons();
 
     // Register Service Worker
@@ -19,6 +72,17 @@ window.addEventListener('DOMContentLoaded', async () => {
     document.getElementById('currency-symbol-add').textContent = currentCurrency;
     document.getElementById('settings-currency').value = currentCurrency;
 
+    // Soporte offline: cargar caché local primero si existe
+    const cachedSubs = localStorage.getItem('suscripciones_cache');
+    if (cachedSubs) {
+        try {
+            suscripciones = JSON.parse(cachedSubs);
+            renderHome();
+        } catch (e) {
+            console.warn('Error leyendo caché offline de suscripciones', e);
+        }
+    }
+
     if (pb.authStore.isValid) {
         showView('view-home');
         await loadSuscripciones();
@@ -26,6 +90,106 @@ window.addEventListener('DOMContentLoaded', async () => {
         showView('auth-container');
     }
 });
+
+// LOGOS PREDEFINIDOS
+function renderPresetLogos() {
+    const container = document.getElementById('preset-logos-container');
+    if (!container) return;
+    container.innerHTML = '';
+
+    PRESET_LOGOS.forEach(preset => {
+        const item = document.createElement('div');
+        item.className = 'preset-logo-item';
+        item.title = preset.name;
+        item.innerHTML = `<img src="${preset.file}" alt="${preset.name}" loading="lazy">`;
+        item.onclick = () => selectPresetLogo(preset, item);
+        container.appendChild(item);
+    });
+}
+
+async function selectPresetLogo(preset, itemEl) {
+    document.querySelectorAll('.preset-logo-item').forEach(el => el.classList.remove('selected'));
+    if (itemEl) itemEl.classList.add('selected');
+
+    selectedPresetLogo = preset.file;
+
+    // Previsualizar
+    const preview = document.getElementById('logo-preview-img');
+    preview.innerHTML = `<img src="${preset.file}">`;
+    document.getElementById('btn-clear-logo').style.display = 'inline-block';
+
+    // Limpiar input de archivo para que no colisionen
+    document.getElementById('logo-file-input').value = '';
+
+    // Si el nombre está vacío o coincide con el preset, sugerirlo
+    const nameInput = document.getElementById('add-name');
+    if (!nameInput.value.trim()) {
+        nameInput.value = preset.name;
+    }
+}
+
+function clearSelectedLogo() {
+    selectedPresetLogo = null;
+    document.getElementById('logo-file-input').value = '';
+    document.querySelectorAll('.preset-logo-item').forEach(el => el.classList.remove('selected'));
+    const preview = document.getElementById('logo-preview-img');
+    preview.innerHTML = '<i data-lucide="image"></i>';
+    document.getElementById('btn-clear-logo').style.display = 'none';
+    lucide.createIcons();
+}
+
+function previewSelectedFile() {
+    const file = document.getElementById('logo-file-input').files[0];
+    const preview = document.getElementById('logo-preview-img');
+
+    // Desmarcar logo predefinido si se sube archivo
+    selectedPresetLogo = null;
+    document.querySelectorAll('.preset-logo-item').forEach(el => el.classList.remove('selected'));
+
+    if (file) {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            preview.innerHTML = `<img src="${e.target.result}">`;
+            document.getElementById('btn-clear-logo').style.display = 'inline-block';
+        };
+        reader.readAsDataURL(file);
+    } else {
+        preview.innerHTML = '<i data-lucide="image"></i>';
+        document.getElementById('btn-clear-logo').style.display = 'none';
+        lucide.createIcons();
+    }
+}
+
+// BÚSQUEDA Y FILTRADO EN PANTALLA PRINCIPAL
+function handleSearch(val) {
+    searchQuery = (val || '').trim().toLowerCase();
+    const clearBtn = document.getElementById('search-clear-btn');
+    if (clearBtn) {
+        clearBtn.style.display = searchQuery ? 'flex' : 'none';
+    }
+    renderHome();
+}
+
+function clearSearch() {
+    const input = document.getElementById('home-search-input');
+    if (input) input.value = '';
+    searchQuery = '';
+    const clearBtn = document.getElementById('search-clear-btn');
+    if (clearBtn) clearBtn.style.display = 'none';
+    renderHome();
+}
+
+function filterByCategory(cat) {
+    selectedCategoryFilter = cat;
+    document.querySelectorAll('#home-category-pills .pill').forEach(p => {
+        if (p.getAttribute('data-cat') === cat) {
+            p.classList.add('active');
+        } else {
+            p.classList.remove('active');
+        }
+    });
+    renderHome();
+}
 
 // NAVEGACIÓN
 function showView(viewId) {
@@ -36,14 +200,17 @@ function showView(viewId) {
     document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
 
     if (viewId === 'view-home') {
-        document.getElementById('nav-home').classList.add('active');
-        document.getElementById('nav-home-stats').classList.add('active');
+        const navHome = document.getElementById('nav-home');
+        const navHomeStats = document.getElementById('nav-home-stats');
+        if (navHome) navHome.classList.add('active');
+        if (navHomeStats) navHomeStats.classList.add('active');
     } else if (viewId === 'view-stats') {
-        document.getElementById('nav-stats').classList.add('active');
-        document.getElementById('nav-stats-stats').classList.add('active');
+        const navStats = document.getElementById('nav-stats');
+        const navStatsStats = document.getElementById('nav-stats-stats');
+        if (navStats) navStats.classList.add('active');
+        if (navStatsStats) navStatsStats.classList.add('active');
     }
 
-    // Trigger resize or specific loaders
     if (viewId === 'view-home' && pb.authStore.isValid) {
         loadSuscripciones();
     }
@@ -54,16 +221,14 @@ function showView(viewId) {
 
 function showAdd() {
     currentSub = null;
+    selectedPresetLogo = null;
     document.getElementById('add-modal-title').textContent = 'NUEVA SUSCRIPCIÓN';
     document.getElementById('add-name').value = '';
     document.getElementById('add-amount').value = '';
     document.getElementById('add-date').value = getTodayDateString();
+    document.getElementById('add-category').value = 'AUTO';
 
-    // Reset logo upload
-    document.getElementById('logo-file-input').value = '';
-    document.getElementById('logo-preview-img').innerHTML = '<i data-lucide="image"></i>';
-    lucide.createIcons();
-
+    clearSelectedLogo();
     setCycle('mensual');
     showView('view-add');
 }
@@ -84,17 +249,14 @@ function showCanceledList() {
     canceledSubs.sort((a, b) => a.nombre.localeCompare(b.nombre));
 
     canceledSubs.forEach(sub => {
-        const cat = getCategoryGuess(sub.nombre);
-        let logoPath = '';
-        if (sub.logo) {
-            logoPath = `${PB_URL}/api/files/${sub.collectionId}/${sub.id}/${sub.logo}`;
-        }
+        const cat = getEffectiveCategory(sub);
+        const logoPath = getSubscriptionLogoUrl(sub);
 
         const logoHtml = `
             <div class="logo-wrapper">
-                <div class="sub-logo-small" style="background: #f4f4f4; color: #000; filter: grayscale(1); opacity: 0.6;">
+                <div class="sub-logo-small" style="background: var(--hover); color: var(--text-color); filter: grayscale(1); opacity: 0.6;">
                     ${logoPath ?
-                `<img src="${logoPath}" onerror="this.style.display='none'; this.parentElement.textContent='${sub.nombre.charAt(0).toUpperCase()}'; this.parentElement.style.background='#000'; this.parentElement.style.color='#fff'">` :
+                `<img src="${logoPath}" onerror="this.style.display='none'; this.parentElement.textContent='${sub.nombre.charAt(0).toUpperCase()}'; this.parentElement.style.background='var(--accent)'; this.parentElement.style.color='var(--accent-contrast)'">` :
                 `<span>${sub.nombre.charAt(0).toUpperCase()}</span>`}
                 </div>
             </div>
@@ -105,10 +267,10 @@ function showCanceledList() {
                 <div class="sub-date" style="display: none;"></div>
                 ${logoHtml}
                 <div class="sub-info" style="margin-left: 0;">
-                    <strong style="color: #666;">${sub.nombre}</strong>
-                    <span style="color: #999;">${cat} • CANCELADA</span>
+                    <strong style="color: var(--text-muted);">${sub.nombre}</strong>
+                    <span style="color: var(--text-muted);">${cat} • CANCELADA</span>
                 </div>
-                <div class="sub-price" style="color: #999; text-decoration: line-through;">${formatCurrency(sub.cantidad)}${currentCurrency}</div>
+                <div class="sub-price" style="color: var(--text-muted); text-decoration: line-through;">${formatCurrency(sub.cantidad)}${currentCurrency}</div>
             </div>
         `;
         container.insertAdjacentHTML('beforeend', itemHtml);
@@ -118,20 +280,26 @@ function showCanceledList() {
     lucide.createIcons();
 }
 
-function previewSelectedFile() {
-    const file = document.getElementById('logo-file-input').files[0];
-    const preview = document.getElementById('logo-preview-img');
-
-    if (file) {
-        const reader = new FileReader();
-        reader.onload = (e) => {
-            preview.innerHTML = `<img src="${e.target.result}">`;
-        };
-        reader.readAsDataURL(file);
-    } else {
-        preview.innerHTML = '<i data-lucide="image"></i>';
-        lucide.createIcons();
+// OBTENER URL DEL LOGO (Soporta logo de PocketBase o local de carpeta logos)
+function getSubscriptionLogoUrl(sub) {
+    if (!sub) return '';
+    if (sub.logo) {
+        // Si sub.logo ya es una ruta relativa local
+        if (sub.logo.startsWith('logos/')) return sub.logo;
+        return `${PB_URL}/api/files/${sub.collectionId}/${sub.id}/${sub.logo}`;
     }
+    // Si no tiene logo en PocketBase, intentar asociar por nombre con un logo predefinido
+    const matched = PRESET_LOGOS.find(p => sub.nombre && sub.nombre.toLowerCase().includes(p.name.toLowerCase()));
+    if (matched) return matched.file;
+    return '';
+}
+
+// OBTENER CATEGORÍA EFECTIVA (Manual si existe, sino estimada)
+function getEffectiveCategory(sub) {
+    if (sub.categoria && sub.categoria !== 'AUTO') {
+        return sub.categoria;
+    }
+    return getCategoryGuess(sub.nombre || '');
 }
 
 // AUTH
@@ -147,6 +315,7 @@ async function login() {
         btn.textContent = "Entrando...";
         await pb.collection('users').authWithPassword(email, pass);
         showView('view-home');
+        await loadSuscripciones();
     } catch (e) {
         alert("Error de inicio de sesión: " + e.message);
         btn.disabled = false;
@@ -164,11 +333,16 @@ async function loadSuscripciones() {
         });
 
         suscripciones = records;
+        // Guardar copia offline
+        try {
+            localStorage.setItem('suscripciones_cache', JSON.stringify(records));
+        } catch (e) {
+            console.warn('Error guardando en caché offline', e);
+        }
         renderHome();
     } catch (err) {
         console.error("Error cargando suscripciones:", err);
         if (err.status === 404) {
-            // Collection might not exist yet
             console.warn("Colección 'suscripciones' no encontrada.");
         }
     }
@@ -213,19 +387,19 @@ function calculateMonthlyCost(cantidad, ciclo) {
 }
 
 function formatCurrency(num) {
-    return num.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    return (num || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
 function getCategoryGuess(name) {
-    const n = name.toLowerCase();
-    if (n.includes('netflix') || n.includes('hbo') || n.includes('disney') || n.includes('prime') || n.includes('youtube') || n.includes('apple')) return "MULTIMEDIA";
-    if (n.includes('spotify') || n.includes('apple music') || n.includes('tidal')) return "MÚSICA";
-    if (n.includes('gym') || n.includes('equinox') || n.includes('fitness')) return "SALUD Y FITNESS";
-    if (n.includes('icloud') || n.includes('google') || n.includes('dropbox') || n.includes('aws') || n.includes('heroku') || n.includes('adobe')) return "HERRAMIENTAS";
+    const n = (name || '').toLowerCase();
+    if (n.includes('netflix') || n.includes('hbo') || n.includes('disney') || n.includes('prime') || n.includes('youtube') || n.includes('apple') || n.includes('infuse') || n.includes('iptv') || n.includes('tinymedia')) return "MULTIMEDIA";
+    if (n.includes('spotify') || n.includes('apple music') || n.includes('tidal') || n.includes('deezer') || n.includes('amazon music')) return "MÚSICA";
+    if (n.includes('gym') || n.includes('equinox') || n.includes('fitness') || n.includes('strava')) return "SALUD Y FITNESS";
+    if (n.includes('icloud') || n.includes('google') || n.includes('dropbox') || n.includes('aws') || n.includes('heroku') || n.includes('adobe') || n.includes('photoshop') || n.includes('chatgpt') || n.includes('gemini') || n.includes('bitwarden') || n.includes('nordvpn') || n.includes('retouch') || n.includes('parcel')) return "HERRAMIENTAS";
     return "GENERAL";
 }
 
-// RENDERIZADO
+// RENDERIZADO PRINCIPAL
 function renderHome() {
     let totalMensual = 0;
 
@@ -254,6 +428,17 @@ function renderHome() {
         let nextBill = getNextBill(sub.primeraFactura || sub.created, sub.ciclo || 'mensual');
         sub._nextBill = nextBill;
 
+        // Filtro por búsqueda de texto
+        if (searchQuery && !sub.nombre.toLowerCase().includes(searchQuery)) {
+            return;
+        }
+
+        // Filtro por categoría seleccionada
+        const subCat = getEffectiveCategory(sub);
+        if (selectedCategoryFilter !== 'all' && subCat !== selectedCategoryFilter) {
+            return;
+        }
+
         if (nextBill <= oneWeek) {
             groups['esta-semana'].items.push(sub);
             groups['esta-semana'].total += cantidad;
@@ -271,11 +456,13 @@ function renderHome() {
     const container = document.getElementById('subs-list-container');
     container.innerHTML = '';
 
+    let totalRendered = 0;
+
     Object.keys(groups).forEach(key => {
         const group = groups[key];
         if (group.items.length === 0) return;
 
-        // Sort items closely approaching
+        totalRendered += group.items.length;
         group.items.sort((a, b) => a._nextBill - b._nextBill);
 
         const headerHtml = `
@@ -291,24 +478,14 @@ function renderHome() {
             const day = dateObj.getDate().toString().padStart(2, '0');
             const month = dateObj.toLocaleString('es-ES', { month: 'short' }).toUpperCase();
 
-            // Assign dot color
-            let dotClass = 'dot-gray';
-            const diffDays = (dateObj - today) / (1000 * 60 * 60 * 24);
-            if (diffDays <= 3) dotClass = 'dot-red';
-            else if (diffDays <= 7) dotClass = 'dot-orange';
-
-            const cat = getCategoryGuess(sub.nombre);
-
-            let logoPath = '';
-            if (sub.logo) {
-                logoPath = `${PB_URL}/api/files/${sub.collectionId}/${sub.id}/${sub.logo}`;
-            }
+            const cat = getEffectiveCategory(sub);
+            const logoPath = getSubscriptionLogoUrl(sub);
 
             const logoHtml = `
                 <div class="logo-wrapper">
-                    <div class="sub-logo-small" style="background: #f4f4f4; color: #000">
+                    <div class="sub-logo-small" style="background: var(--hover); color: var(--text-color)">
                         ${logoPath ?
-                    `<img src="${logoPath}" onerror="this.style.display='none'; this.parentElement.textContent='${sub.nombre.charAt(0).toUpperCase()}'; this.parentElement.style.background='#000'; this.parentElement.style.color='#fff'">` :
+                    `<img src="${logoPath}" onerror="this.style.display='none'; this.parentElement.textContent='${sub.nombre.charAt(0).toUpperCase()}'; this.parentElement.style.background='var(--accent)'; this.parentElement.style.color='var(--accent-contrast)'">` :
                     `<span>${sub.nombre.charAt(0).toUpperCase()}</span>`}
                     </div>
                 </div>
@@ -331,33 +508,38 @@ function renderHome() {
             container.insertAdjacentHTML('beforeend', itemHtml);
         });
     });
+
+    if (totalRendered === 0) {
+        if (searchQuery || selectedCategoryFilter !== 'all') {
+            container.innerHTML = '<p class="hint" style="text-align: center; margin-top: 40px; padding: 20px;">No se encontraron suscripciones con este filtro.</p>';
+        } else if (suscripciones.filter(s => s.estado !== 'cancelada').length === 0) {
+            container.innerHTML = '<p class="hint" style="text-align: center; margin-top: 40px; padding: 20px;">No tienes suscripciones activas. Pulsa el botón + para añadir una.</p>';
+        }
+    }
 }
 
 function openDetails(id) {
     currentSub = suscripciones.find(s => s.id === id);
     if (!currentSub) return;
 
-    const cat = getCategoryGuess(currentSub.nombre);
+    const cat = getEffectiveCategory(currentSub);
     const nextBill = currentSub._nextBill || getNextBill(currentSub.primeraFactura, currentSub.ciclo);
     const prevBill = getPrevBill(nextBill, currentSub.ciclo);
 
-    let logoPath = '';
-    if (currentSub.logo) {
-        logoPath = `${PB_URL}/api/files/${currentSub.collectionId}/${currentSub.id}/${currentSub.logo}`;
-    }
-
+    const logoPath = getSubscriptionLogoUrl(currentSub);
     const logoContainer = document.getElementById('det-logo');
     logoContainer.style.background = 'transparent';
 
     if (logoPath) {
-        logoContainer.innerHTML = `<img src="${logoPath}" onerror="this.style.display='none'; this.parentElement.textContent='${currentSub.nombre.charAt(0).toUpperCase()}'; this.parentElement.style.background='#000'; this.parentElement.style.color='#fff'">`;
-        logoContainer.style.background = '#f0f0f0';
-        logoContainer.style.color = '#000';
+        logoContainer.innerHTML = `<img src="${logoPath}" onerror="this.style.display='none'; this.parentElement.textContent='${currentSub.nombre.charAt(0).toUpperCase()}'; this.parentElement.style.background='var(--accent)'; this.parentElement.style.color='var(--accent-contrast)'">`;
+        logoContainer.style.background = 'var(--hover)';
+        logoContainer.style.color = 'var(--text-color)';
     } else {
         logoContainer.textContent = currentSub.nombre.charAt(0).toUpperCase();
-        logoContainer.style.background = '#000';
-        logoContainer.style.color = '#fff';
+        logoContainer.style.background = 'var(--accent)';
+        logoContainer.style.color = 'var(--accent-contrast)';
     }
+
     document.getElementById('det-title').textContent = currentSub.nombre.toUpperCase();
     document.getElementById('det-price-val').textContent = `${formatCurrency(currentSub.cantidad)}${currentCurrency}`;
 
@@ -373,7 +555,6 @@ function openDetails(id) {
                 currentSub.cantidad * 2; // For semestral
 
     document.getElementById('det-annual').textContent = `${formatCurrency(annualCost)}${currentCurrency}`;
-
     document.getElementById('det-next').textContent = nextBill.toLocaleString('es-ES', { month: 'short', year: '2-digit' }).replace('.', ' ');
     document.getElementById('det-prev').textContent = prevBill.toLocaleString('es-ES', { month: 'short', year: '2-digit' }).replace('.', ' ');
 
@@ -416,13 +597,22 @@ let activeCycle = 'mensual';
 function setCycle(cycle) {
     activeCycle = cycle;
     document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-    document.querySelector(`.tab[data-cycle="${cycle}"]`).classList.add('active');
+    const tabEl = document.querySelector(`.tab[data-cycle="${cycle}"]`);
+    if (tabEl) tabEl.classList.add('active');
+}
+
+// Convertir una ruta local en File/Blob para guardarlo en PocketBase si es necesario
+async function fetchPresetAsFile(presetPath, filename) {
+    const res = await fetch(presetPath);
+    const blob = await res.blob();
+    return new File([blob], filename, { type: blob.type || 'image/png' });
 }
 
 async function saveSubscription() {
     const name = document.getElementById('add-name').value.trim();
     const amount = parseFloat(document.getElementById('add-amount').value);
     const date = document.getElementById('add-date').value;
+    const cat = document.getElementById('add-category').value;
 
     if (!name || isNaN(amount) || amount < 0 || !date) {
         return alert("Por favor completa los campos correctamente");
@@ -434,6 +624,8 @@ async function saveSubscription() {
     formData.append('ciclo', activeCycle);
     formData.append('primeraFactura', date + " 12:00:00.000Z");
     formData.append('user', pb.authStore.model.id);
+    if (cat) formData.append('categoria', cat);
+
     if (!currentSub) {
         formData.append('estado', 'activa');
     }
@@ -441,6 +633,14 @@ async function saveSubscription() {
     const logoFile = document.getElementById('logo-file-input').files[0];
     if (logoFile) {
         formData.append('logo', logoFile);
+    } else if (selectedPresetLogo) {
+        try {
+            const fileName = selectedPresetLogo.split('/').pop();
+            const fileObj = await fetchPresetAsFile(selectedPresetLogo, fileName);
+            formData.append('logo', fileObj);
+        } catch (e) {
+            console.warn("No se pudo adjuntar el logo predefinido como archivo:", e);
+        }
     }
 
     const btn = document.getElementById('btn-save');
@@ -466,8 +666,6 @@ async function saveSubscription() {
     }
 }
 
-
-
 function editCurrentSub() {
     if (!currentSub) return;
     document.getElementById('add-modal-title').textContent = 'EDITAR SUSCRIPCIÓN';
@@ -475,12 +673,22 @@ function editCurrentSub() {
     document.getElementById('add-amount').value = currentSub.cantidad;
     document.getElementById('add-date').value = (currentSub.primeraFactura || "").split(" ")[0] || getTodayDateString();
 
+    const catSelect = document.getElementById('add-category');
+    if (catSelect) {
+        catSelect.value = currentSub.categoria || 'AUTO';
+    }
+
+    selectedPresetLogo = null;
+    document.querySelectorAll('.preset-logo-item').forEach(el => el.classList.remove('selected'));
+
     const preview = document.getElementById('logo-preview-img');
-    if (currentSub.logo) {
-        const logoPath = `${PB_URL}/api/files/${currentSub.collectionId}/${currentSub.id}/${currentSub.logo}`;
-        preview.innerHTML = `<img src="${logoPath}">`;
+    const logoUrl = getSubscriptionLogoUrl(currentSub);
+    if (logoUrl) {
+        preview.innerHTML = `<img src="${logoUrl}">`;
+        document.getElementById('btn-clear-logo').style.display = 'inline-block';
     } else {
         preview.innerHTML = '<i data-lucide="image"></i>';
+        document.getElementById('btn-clear-logo').style.display = 'none';
         lucide.createIcons();
     }
 
@@ -502,26 +710,17 @@ async function deleteCurrentSub() {
     }
 }
 
+// ESTADÍSTICAS Y DESGLOSE POR CATEGORÍA
 function renderStats() {
-    if (suscripciones.length === 0) {
-        document.getElementById('stats-total-monthly').textContent = `0.00${currentCurrency}`;
-        document.getElementById('stats-total-annual').textContent = `0.00${currentCurrency}`;
-        document.getElementById('stats-sub-count').textContent = '0';
-        document.getElementById('stats-categories-container').innerHTML = '<p class="hint">No hay datos suficientes</p>';
-        document.getElementById('stats-top-sub').innerHTML = '';
-        return;
-    }
-
-    let totalMonthly = 0;
-    let totalAnnual = 0;
-
-    // Solo estadísticas de suscripciones activas
     const activeSubs = suscripciones.filter(s => s.estado !== 'cancelada');
 
     if (activeSubs.length === 0) {
         document.getElementById('stats-total-monthly').textContent = `0.00${currentCurrency}`;
         document.getElementById('stats-total-annual').textContent = `0.00${currentCurrency}`;
-        document.getElementById('stats-sub-count').textContent = '0';
+        document.getElementById('stats-sub-count').textContent = suscripciones.length;
+        document.getElementById('stats-active-count').textContent = '0';
+        document.getElementById('stats-canceled-count').textContent = suscripciones.length;
+        document.getElementById('stats-categories-container').innerHTML = '<p class="hint">No hay suscripciones activas</p>';
         document.getElementById('stats-cheapest-sub').innerHTML = '';
         document.getElementById('stats-top-sub').innerHTML = '';
         document.getElementById('stats-oldest-sub').innerHTML = '';
@@ -529,14 +728,19 @@ function renderStats() {
         return;
     }
 
+    let totalMonthly = 0;
     let topSub = activeSubs[0];
     let topMonthlyVal = 0;
     let cheapestSub = activeSubs[0];
     let cheapestMonthlyVal = Infinity;
+    const catTotals = {};
 
     activeSubs.forEach(sub => {
         const monthlyCost = calculateMonthlyCost(sub.cantidad, sub.ciclo);
         totalMonthly += monthlyCost;
+
+        const cat = getEffectiveCategory(sub);
+        catTotals[cat] = (catTotals[cat] || 0) + monthlyCost;
 
         if (monthlyCost > topMonthlyVal) {
             topMonthlyVal = monthlyCost;
@@ -548,58 +752,77 @@ function renderStats() {
         }
     });
 
-    totalAnnual = totalMonthly * 12;
+    const totalAnnual = totalMonthly * 12;
 
     document.getElementById('stats-total-monthly').textContent = `${formatCurrency(totalMonthly)}${currentCurrency}`;
     document.getElementById('stats-total-annual').textContent = `${formatCurrency(totalAnnual)}${currentCurrency}`;
-
-    // Contadores detallados
     document.getElementById('stats-sub-count').textContent = suscripciones.length;
     document.getElementById('stats-active-count').textContent = activeSubs.length;
     document.getElementById('stats-canceled-count').textContent = suscripciones.length - activeSubs.length;
 
-    // Find Oldest and Newest (only among active ones)
+    // Render desgloses por categoría con barras de porcentaje
+    const catContainer = document.getElementById('stats-categories-container');
+    if (catContainer) {
+        catContainer.innerHTML = '';
+        const sortedCats = Object.keys(catTotals).sort((a, b) => catTotals[b] - catTotals[a]);
+
+        sortedCats.forEach(cat => {
+            const amount = catTotals[cat];
+            const pct = totalMonthly > 0 ? Math.round((amount / totalMonthly) * 100) : 0;
+            const catHtml = `
+                <div class="category-bar-item">
+                    <div class="cat-header">
+                        <strong>${cat}</strong>
+                        <span>${formatCurrency(amount)}${currentCurrency}/mes (${pct}%)</span>
+                    </div>
+                    <div class="progress-bar">
+                        <div class="progress-fill" style="width: ${pct}%;"></div>
+                    </div>
+                </div>
+            `;
+            catContainer.insertAdjacentHTML('beforeend', catHtml);
+        });
+    }
+
+    // Suscripción más barata y más cara
+    renderSubCard('stats-cheapest-sub', cheapestSub, `${formatCurrency(calculateMonthlyCost(cheapestSub.cantidad, cheapestSub.ciclo))}${currentCurrency} al mes`);
+    renderSubCard('stats-top-sub', topSub, `${formatCurrency(calculateMonthlyCost(topSub.cantidad, topSub.ciclo))}${currentCurrency} al mes`);
+
+    // Más antigua y más reciente
     const sortedByDate = [...activeSubs].sort((a, b) => new Date(a.primeraFactura) - new Date(b.primeraFactura));
     const oldestSub = sortedByDate[0];
     const newestSub = sortedByDate[sortedByDate.length - 1];
 
-    function renderSubCard(containerId, sub, footerText) {
-        const container = document.getElementById(containerId);
-        if (!container) return;
-        if (!sub) {
-            container.innerHTML = '<p style="color: var(--text-muted); font-size: 13px; padding: 10px;">No hay datos</p>';
-            return;
-        }
-
-        let logoPath = '';
-        if (sub.logo) {
-            logoPath = `${PB_URL}/api/files/${sub.collectionId}/${sub.id}/${sub.logo}`;
-        }
-
-        container.innerHTML = `
-            <div class="top-sub-card">
-                <div class="sub-logo-small" style="background: #f4f4f4; color: #000">
-                    ${logoPath ?
-                `<img src="${logoPath}" onerror="this.style.display='none'; this.parentElement.textContent='${sub.nombre.charAt(0).toUpperCase()}'; this.parentElement.style.background='#000'; this.parentElement.style.color='#fff'">` :
-                sub.nombre.charAt(0).toUpperCase()}
-                </div>
-                <div class="sub-info">
-                    <strong>${sub.nombre}</strong>
-                    <span>${footerText}</span>
-                </div>
-            </div>
-        `;
-    }
-
-    renderSubCard('stats-cheapest-sub', cheapestSub, `${formatCurrency(calculateMonthlyCost(cheapestSub.cantidad, cheapestSub.ciclo))}${currentCurrency} al mes`);
-    renderSubCard('stats-top-sub', topSub, `${formatCurrency(calculateMonthlyCost(topSub.cantidad, topSub.ciclo))}${currentCurrency} al mes`);
-
-    // Formatear fechas para los otros dos
     const oldestDate = new Date(oldestSub.primeraFactura).toLocaleDateString('es-ES', { day: '2-digit', month: 'short', year: '2-digit' }).replace('.', '');
     const newestDate = new Date(newestSub.primeraFactura).toLocaleDateString('es-ES', { day: '2-digit', month: 'short', year: '2-digit' }).replace('.', '');
 
     renderSubCard('stats-oldest-sub', oldestSub, `Primer pago: ${oldestDate}`);
     renderSubCard('stats-newest-sub', newestSub, `Primer pago: ${newestDate}`);
+}
+
+function renderSubCard(containerId, sub, footerText) {
+    const container = document.getElementById(containerId);
+    if (!container) return;
+    if (!sub) {
+        container.innerHTML = '<p style="color: var(--text-muted); font-size: 13px; padding: 10px;">No hay datos</p>';
+        return;
+    }
+
+    const logoPath = getSubscriptionLogoUrl(sub);
+
+    container.innerHTML = `
+        <div class="top-sub-card">
+            <div class="sub-logo-small" style="background: var(--hover); color: var(--text-color)">
+                ${logoPath ?
+            `<img src="${logoPath}" onerror="this.style.display='none'; this.parentElement.textContent='${sub.nombre.charAt(0).toUpperCase()}'; this.parentElement.style.background='var(--accent)'; this.parentElement.style.color='var(--accent-contrast)'">` :
+            sub.nombre.charAt(0).toUpperCase()}
+            </div>
+            <div class="sub-info">
+                <strong>${sub.nombre}</strong>
+                <span>${footerText}</span>
+            </div>
+        </div>
+    `;
 }
 
 // SETUP Y AJUSTES
@@ -612,12 +835,12 @@ function updateCurrency() {
 
 function exportData() {
     if (suscripciones.length === 0) return alert("No hay datos para exportar");
-    let csv = "Nombre,Cantidad,Ciclo,Primera Factura\n";
+    let csv = "Nombre,Cantidad,Ciclo,Categoria,Estado,Primera Factura\n";
     suscripciones.forEach(s => {
-        csv += `"${s.nombre}",${s.cantidad},${s.ciclo},${s.primeraFactura.split(' ')[0]}\n`;
+        csv += `"${s.nombre}",${s.cantidad},${s.ciclo},"${getEffectiveCategory(s)}","${s.estado || 'activa'}",${(s.primeraFactura || '').split(' ')[0]}\n`;
     });
 
-    const blob = new Blob([csv], { type: 'text/csv' });
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
     const url = window.URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;

@@ -2,7 +2,7 @@
   "name": "Mis Suscripciones",
   "short_name": "Suscripciones",
   "description": "App para gestionar tus suscripciones.",
-  "start_url": "./index.html",
+  "start_url": "/suscripciones/index.html",
   "display": "standalone",
   "background_color": "#ffffff",
   "theme_color": "#000000",
