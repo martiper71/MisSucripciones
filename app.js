@@ -194,7 +194,8 @@ function filterByCategory(cat) {
 // NAVEGACIÓN
 function showView(viewId) {
     document.querySelectorAll('.view').forEach(el => el.classList.remove('active'));
-    document.getElementById(viewId).classList.add('active');
+    const target = document.getElementById(viewId);
+    if (target) target.classList.add('active');
 
     // Update Bottom Nav active state
     document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
@@ -217,6 +218,7 @@ function showView(viewId) {
     if (viewId === 'view-stats') {
         renderStats();
     }
+    lucide.createIcons();
 }
 
 function showAdd() {
@@ -240,42 +242,56 @@ function showCanceledList() {
     const canceledSubs = suscripciones.filter(s => s.estado === 'cancelada');
 
     if (canceledSubs.length === 0) {
-        container.innerHTML = '<p class="hint" style="text-align: center; margin-top: 40px; padding: 20px;">No tienes suscripciones canceladas en tu historial.</p>';
+        container.innerHTML = `
+            <div class="empty-state">
+                <div class="empty-icon"><i data-lucide="archive"></i></div>
+                <h4>Sin cancelaciones</h4>
+                <p>No tienes suscripciones canceladas en tu historial.</p>
+            </div>
+        `;
         showView('view-canceled');
+        lucide.createIcons();
         return;
     }
 
     // Ordenar por nombre
     canceledSubs.sort((a, b) => a.nombre.localeCompare(b.nombre));
 
+    const grid = document.createElement('div');
+    grid.className = 'subs-grid';
+
     canceledSubs.forEach(sub => {
         const cat = getEffectiveCategory(sub);
         const logoPath = getSubscriptionLogoUrl(sub);
 
         const logoHtml = `
-            <div class="logo-wrapper">
-                <div class="sub-logo-small" style="background: var(--hover); color: var(--text-color); filter: grayscale(1); opacity: 0.6;">
-                    ${logoPath ?
-                `<img src="${logoPath}" onerror="this.style.display='none'; this.parentElement.textContent='${sub.nombre.charAt(0).toUpperCase()}'; this.parentElement.style.background='var(--accent)'; this.parentElement.style.color='var(--accent-contrast)'">` :
-                `<span>${sub.nombre.charAt(0).toUpperCase()}</span>`}
-                </div>
+            <div class="sub-logo-avatar" style="opacity: 0.5; filter: grayscale(1);">
+                ${logoPath ?
+            `<img src="${logoPath}" onerror="this.style.display='none'; this.parentElement.textContent='${sub.nombre.charAt(0).toUpperCase()}';">` :
+            `<span>${sub.nombre.charAt(0).toUpperCase()}</span>`}
             </div>
         `;
 
         const itemHtml = `
-            <div class="sub-item" onclick="openDetails('${sub.id}')" style="opacity: 0.8;">
-                <div class="sub-date" style="display: none;"></div>
+            <div class="sub-item" onclick="openDetails('${sub.id}')" style="opacity: 0.75;">
                 ${logoHtml}
-                <div class="sub-info" style="margin-left: 0;">
-                    <strong style="color: var(--text-muted);">${sub.nombre}</strong>
-                    <span style="color: var(--text-muted);">${cat} • CANCELADA</span>
+                <div class="sub-info">
+                    <strong style="text-decoration: line-through;">${sub.nombre}</strong>
+                    <div class="sub-meta">
+                        <span class="sub-cat-tag">${cat}</span>
+                        <span>CANCELADA</span>
+                    </div>
                 </div>
-                <div class="sub-price" style="color: var(--text-muted); text-decoration: line-through;">${formatCurrency(sub.cantidad)}${currentCurrency}</div>
+                <div class="sub-price-block">
+                    <span class="sub-price-val" style="color: var(--text-tertiary); text-decoration: line-through;">${formatCurrency(sub.cantidad)}${currentCurrency}</span>
+                    <span class="sub-price-cycle">${sub.ciclo}</span>
+                </div>
             </div>
         `;
-        container.insertAdjacentHTML('beforeend', itemHtml);
+        grid.insertAdjacentHTML('beforeend', itemHtml);
     });
 
+    container.appendChild(grid);
     showView('view-canceled');
     lucide.createIcons();
 }
@@ -284,11 +300,9 @@ function showCanceledList() {
 function getSubscriptionLogoUrl(sub) {
     if (!sub) return '';
     if (sub.logo) {
-        // Si sub.logo ya es una ruta relativa local
         if (sub.logo.startsWith('logos/')) return sub.logo;
         return `${PB_URL}/api/files/${sub.collectionId}/${sub.id}/${sub.logo}`;
     }
-    // Si no tiene logo en PocketBase, intentar asociar por nombre con un logo predefinido
     const matched = PRESET_LOGOS.find(p => sub.nombre && sub.nombre.toLowerCase().includes(p.name.toLowerCase()));
     if (matched) return matched.file;
     return '';
@@ -308,18 +322,18 @@ async function login() {
     const pass = document.getElementById('login-pass').value;
     const btn = document.getElementById('btn-login');
 
-    if (!email || !pass) return alert("Hacen falta datos");
+    if (!email || !pass) return alert("Por favor completa tu correo y contraseña");
 
     try {
         btn.disabled = true;
-        btn.textContent = "Entrando...";
+        btn.textContent = "Accediendo...";
         await pb.collection('users').authWithPassword(email, pass);
         showView('view-home');
         await loadSuscripciones();
     } catch (e) {
         alert("Error de inicio de sesión: " + e.message);
         btn.disabled = false;
-        btn.textContent = "Entrar";
+        btn.textContent = "Iniciar sesión";
     }
 }
 
@@ -333,7 +347,6 @@ async function loadSuscripciones() {
         });
 
         suscripciones = records;
-        // Guardar copia offline
         try {
             localStorage.setItem('suscripciones_cache', JSON.stringify(records));
         } catch (e) {
@@ -342,9 +355,6 @@ async function loadSuscripciones() {
         renderHome();
     } catch (err) {
         console.error("Error cargando suscripciones:", err);
-        if (err.status === 404) {
-            console.warn("Colección 'suscripciones' no encontrada.");
-        }
     }
 }
 
@@ -387,7 +397,7 @@ function calculateMonthlyCost(cantidad, ciclo) {
 }
 
 function formatCurrency(num) {
-    return (num || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    return (num || 0).toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
 function getCategoryGuess(name) {
@@ -399,9 +409,11 @@ function getCategoryGuess(name) {
     return "GENERAL";
 }
 
-// RENDERIZADO PRINCIPAL
+// RENDERIZADO PRINCIPAL (DISEÑO MODERNO DE TARJETAS)
 function renderHome() {
     let totalMensual = 0;
+    let closestSub = null;
+    let closestTime = Infinity;
 
     const today = new Date();
     today.setHours(0, 0, 0, 0);
@@ -413,20 +425,27 @@ function renderHome() {
     endOfMonth.setHours(23, 59, 59, 999);
 
     const groups = {
-        'esta-semana': { label: 'ESTA SEMANA', total: 0, items: [] },
-        'este-mes': { label: 'ESTE MES', total: 0, items: [] },
-        'mas-tarde': { label: 'MÁS TARDE', total: 0, items: [] }
+        'esta-semana': { label: 'Esta Semana', total: 0, items: [] },
+        'este-mes': { label: 'Próximos este Mes', total: 0, items: [] },
+        'mas-tarde': { label: 'Más Adelante', total: 0, items: [] }
     };
 
+    let activeCount = 0;
+
     suscripciones.forEach(sub => {
-        // Only count and show active subscriptions
         if (sub.estado === 'cancelada') return;
 
+        activeCount++;
         let cantidad = parseFloat(sub.cantidad || 0);
         totalMensual += calculateMonthlyCost(cantidad, sub.ciclo);
 
         let nextBill = getNextBill(sub.primeraFactura || sub.created, sub.ciclo || 'mensual');
         sub._nextBill = nextBill;
+
+        if (nextBill >= today && nextBill < closestTime) {
+            closestTime = nextBill;
+            closestSub = sub;
+        }
 
         // Filtro por búsqueda de texto
         if (searchQuery && !sub.nombre.toLowerCase().includes(searchQuery)) {
@@ -451,7 +470,24 @@ function renderHome() {
         }
     });
 
-    document.getElementById('total-monthly-spend').textContent = `-${formatCurrency(totalMensual)}${currentCurrency}`;
+    // Actualizar Hero card
+    document.getElementById('total-monthly-spend').textContent = `${formatCurrency(totalMensual)}${currentCurrency}`;
+    const badgeActive = document.getElementById('hero-badge-active');
+    if (badgeActive) badgeActive.textContent = `${activeCount} ACTIVAS`;
+
+    const annualProjection = document.getElementById('home-annual-projection');
+    if (annualProjection) annualProjection.textContent = `${formatCurrency(totalMensual * 12)}${currentCurrency}`;
+
+    const nextChargeInfo = document.getElementById('home-next-charge-info');
+    if (nextChargeInfo) {
+        if (closestSub && closestSub._nextBill) {
+            const day = closestSub._nextBill.getDate().toString().padStart(2, '0');
+            const month = closestSub._nextBill.toLocaleString('es-ES', { month: 'short' });
+            nextChargeInfo.textContent = `${closestSub.nombre} (${day} ${month})`;
+        } else {
+            nextChargeInfo.textContent = 'Ninguno';
+        }
+    }
 
     const container = document.getElementById('subs-list-container');
     container.innerHTML = '';
@@ -465,13 +501,19 @@ function renderHome() {
         totalRendered += group.items.length;
         group.items.sort((a, b) => a._nextBill - b._nextBill);
 
+        const section = document.createElement('div');
+        section.className = 'group-section';
+
         const headerHtml = `
             <div class="group-header">
                 <span>${group.label}</span>
-                <span class="right">TOTAL ${formatCurrency(group.total)}${currentCurrency}</span>
+                <span class="right">${formatCurrency(group.total)}${currentCurrency}</span>
             </div>
         `;
-        container.insertAdjacentHTML('beforeend', headerHtml);
+        section.insertAdjacentHTML('beforeend', headerHtml);
+
+        const grid = document.createElement('div');
+        grid.className = 'subs-grid';
 
         group.items.forEach(sub => {
             const dateObj = sub._nextBill;
@@ -482,40 +524,61 @@ function renderHome() {
             const logoPath = getSubscriptionLogoUrl(sub);
 
             const logoHtml = `
-                <div class="logo-wrapper">
-                    <div class="sub-logo-small" style="background: var(--hover); color: var(--text-color)">
-                        ${logoPath ?
-                    `<img src="${logoPath}" onerror="this.style.display='none'; this.parentElement.textContent='${sub.nombre.charAt(0).toUpperCase()}'; this.parentElement.style.background='var(--accent)'; this.parentElement.style.color='var(--accent-contrast)'">` :
-                    `<span>${sub.nombre.charAt(0).toUpperCase()}</span>`}
-                    </div>
+                <div class="sub-logo-avatar">
+                    ${logoPath ?
+                `<img src="${logoPath}" onerror="this.style.display='none'; this.parentElement.textContent='${sub.nombre.charAt(0).toUpperCase()}';">` :
+                `<span>${sub.nombre.charAt(0).toUpperCase()}</span>`}
                 </div>
             `;
 
             const itemHtml = `
                 <div class="sub-item" onclick="openDetails('${sub.id}')">
-                    <div class="sub-date">
+                    <div class="sub-date-badge">
                         <strong>${day}</strong>
                         <span>${month}</span>
                     </div>
                     ${logoHtml}
                     <div class="sub-info">
                         <strong>${sub.nombre}</strong>
-                        <span>${cat} • ${sub.ciclo.toUpperCase()}</span>
+                        <div class="sub-meta">
+                            <span class="sub-cat-tag">${cat}</span>
+                            <span>• ${sub.ciclo}</span>
+                        </div>
                     </div>
-                    <div class="sub-price">${formatCurrency(sub.cantidad)}${currentCurrency}</div>
+                    <div class="sub-price-block">
+                        <span class="sub-price-val">${formatCurrency(sub.cantidad)}${currentCurrency}</span>
+                        <span class="sub-price-cycle">/${sub.ciclo === 'mensual' ? 'mes' : sub.ciclo === 'anual' ? 'año' : sub.ciclo === 'trimestral' ? 'trim' : 'sem'}</span>
+                    </div>
                 </div>
             `;
-            container.insertAdjacentHTML('beforeend', itemHtml);
+            grid.insertAdjacentHTML('beforeend', itemHtml);
         });
+
+        section.appendChild(grid);
+        container.appendChild(section);
     });
 
     if (totalRendered === 0) {
         if (searchQuery || selectedCategoryFilter !== 'all') {
-            container.innerHTML = '<p class="hint" style="text-align: center; margin-top: 40px; padding: 20px;">No se encontraron suscripciones con este filtro.</p>';
-        } else if (suscripciones.filter(s => s.estado !== 'cancelada').length === 0) {
-            container.innerHTML = '<p class="hint" style="text-align: center; margin-top: 40px; padding: 20px;">No tienes suscripciones activas. Pulsa el botón + para añadir una.</p>';
+            container.innerHTML = `
+                <div class="empty-state">
+                    <div class="empty-icon"><i data-lucide="search"></i></div>
+                    <h4>Sin resultados</h4>
+                    <p>No hay suscripciones que coincidan con la búsqueda o filtro actual.</p>
+                </div>
+            `;
+        } else {
+            container.innerHTML = `
+                <div class="empty-state">
+                    <div class="empty-icon"><i data-lucide="sparkles"></i></div>
+                    <h4>Tu lista está vacía</h4>
+                    <p>Toca el botón flotante (+) para añadir tu primera suscripción.</p>
+                </div>
+            `;
         }
     }
+
+    lucide.createIcons();
 }
 
 function openDetails(id) {
@@ -528,19 +591,14 @@ function openDetails(id) {
 
     const logoPath = getSubscriptionLogoUrl(currentSub);
     const logoContainer = document.getElementById('det-logo');
-    logoContainer.style.background = 'transparent';
 
     if (logoPath) {
-        logoContainer.innerHTML = `<img src="${logoPath}" onerror="this.style.display='none'; this.parentElement.textContent='${currentSub.nombre.charAt(0).toUpperCase()}'; this.parentElement.style.background='var(--accent)'; this.parentElement.style.color='var(--accent-contrast)'">`;
-        logoContainer.style.background = 'var(--hover)';
-        logoContainer.style.color = 'var(--text-color)';
+        logoContainer.innerHTML = `<img src="${logoPath}" onerror="this.style.display='none'; this.parentElement.textContent='${currentSub.nombre.charAt(0).toUpperCase()}';">`;
     } else {
         logoContainer.textContent = currentSub.nombre.charAt(0).toUpperCase();
-        logoContainer.style.background = 'var(--accent)';
-        logoContainer.style.color = 'var(--accent-contrast)';
     }
 
-    document.getElementById('det-title').textContent = currentSub.nombre.toUpperCase();
+    document.getElementById('det-title').textContent = currentSub.nombre;
     document.getElementById('det-price-val').textContent = `${formatCurrency(currentSub.cantidad)}${currentCurrency}`;
 
     let cycleSuffix = "/mes";
@@ -552,14 +610,14 @@ function openDetails(id) {
     const annualCost = currentSub.ciclo === 'anual' ? currentSub.cantidad :
         currentSub.ciclo === 'mensual' ? currentSub.cantidad * 12 :
             currentSub.ciclo === 'trimestral' ? currentSub.cantidad * 4 :
-                currentSub.cantidad * 2; // For semestral
+                currentSub.cantidad * 2;
 
     document.getElementById('det-annual').textContent = `${formatCurrency(annualCost)}${currentCurrency}`;
-    document.getElementById('det-next').textContent = nextBill.toLocaleString('es-ES', { month: 'short', year: '2-digit' }).replace('.', ' ');
-    document.getElementById('det-prev').textContent = prevBill.toLocaleString('es-ES', { month: 'short', year: '2-digit' }).replace('.', ' ');
+    document.getElementById('det-next').textContent = nextBill.toLocaleDateString('es-ES', { day: '2-digit', month: 'short', year: 'numeric' });
+    document.getElementById('det-prev').textContent = prevBill.toLocaleDateString('es-ES', { day: '2-digit', month: 'short', year: 'numeric' });
 
     const startDate = new Date(currentSub.primeraFactura);
-    document.getElementById('det-cat').textContent = startDate.toLocaleDateString('es-ES', { day: '2-digit', month: 'short', year: '2-digit' }).replace('.', '');
+    document.getElementById('det-cat').textContent = startDate.toLocaleDateString('es-ES', { day: '2-digit', month: 'short', year: 'numeric' });
 
     const cancelBtn = document.getElementById('btn-cancel-sub');
     const statusPill = document.getElementById('det-status');
@@ -570,22 +628,21 @@ function openDetails(id) {
         statusPill.className = 'status-pill canceled-pill';
     } else {
         cancelBtn.style.display = 'flex';
-        cancelBtn.innerHTML = 'CANCELAR SUSCRIPCIÓN <i data-lucide="x-circle"></i>';
         statusPill.innerHTML = '<div class="dot green-dot"></div> ACTIVA';
         statusPill.className = 'status-pill active-pill';
     }
-    lucide.createIcons();
 
     showView('view-details');
+    lucide.createIcons();
 }
 
 async function cancelCurrentSub() {
     if (!currentSub) return;
-    if (!confirm(`¿Estás seguro de que quieres cancelar la suscripción a ${currentSub.nombre}? Ya no aparecerá en tus próximos pagos.`)) return;
+    if (!confirm(`¿Quieres marcar como cancelada la suscripción a ${currentSub.nombre}? Se archivará en tu historial.`)) return;
 
     try {
         await pb.collection('suscripciones').update(currentSub.id, { estado: 'cancelada' });
-        showToast("Suscripción cancelada");
+        showToast("Suscripción cancelada correctamente");
         await loadSuscripciones();
         showView('view-home');
     } catch (err) {
@@ -601,7 +658,6 @@ function setCycle(cycle) {
     if (tabEl) tabEl.classList.add('active');
 }
 
-// Convertir una ruta local en File/Blob para guardarlo en PocketBase si es necesario
 async function fetchPresetAsFile(presetPath, filename) {
     const res = await fetch(presetPath);
     const blob = await res.blob();
@@ -639,7 +695,7 @@ async function saveSubscription() {
             const fileObj = await fetchPresetAsFile(selectedPresetLogo, fileName);
             formData.append('logo', fileObj);
         } catch (e) {
-            console.warn("No se pudo adjuntar el logo predefinido como archivo:", e);
+            console.warn("No se pudo adjuntar el logo predefinido:", e);
         }
     }
 
@@ -653,7 +709,7 @@ async function saveSubscription() {
             showToast("Suscripción actualizada");
         } else {
             await pb.collection('suscripciones').create(formData);
-            showToast("Suscripción añadida");
+            showToast("Suscripción añadida con éxito");
         }
 
         await loadSuscripciones();
@@ -689,16 +745,16 @@ function editCurrentSub() {
     } else {
         preview.innerHTML = '<i data-lucide="image"></i>';
         document.getElementById('btn-clear-logo').style.display = 'none';
-        lucide.createIcons();
     }
 
     setCycle(currentSub.ciclo || 'mensual');
     showView('view-add');
+    lucide.createIcons();
 }
 
 async function deleteCurrentSub() {
     if (!currentSub) return;
-    if (!confirm(`¿Eliminar la suscripción a ${currentSub.nombre}?`)) return;
+    if (!confirm(`¿Estás seguro de eliminar definitivamente la suscripción a ${currentSub.nombre}? Esta acción no se puede deshacer.`)) return;
 
     try {
         await pb.collection('suscripciones').delete(currentSub.id);
@@ -715,12 +771,12 @@ function renderStats() {
     const activeSubs = suscripciones.filter(s => s.estado !== 'cancelada');
 
     if (activeSubs.length === 0) {
-        document.getElementById('stats-total-monthly').textContent = `0.00${currentCurrency}`;
-        document.getElementById('stats-total-annual').textContent = `0.00${currentCurrency}`;
+        document.getElementById('stats-total-monthly').textContent = `0,00${currentCurrency}`;
+        document.getElementById('stats-total-annual').textContent = `0,00${currentCurrency}`;
         document.getElementById('stats-sub-count').textContent = suscripciones.length;
         document.getElementById('stats-active-count').textContent = '0';
         document.getElementById('stats-canceled-count').textContent = suscripciones.length;
-        document.getElementById('stats-categories-container').innerHTML = '<p class="hint">No hay suscripciones activas</p>';
+        document.getElementById('stats-categories-container').innerHTML = '<p class="hint">No hay suscripciones activas.</p>';
         document.getElementById('stats-cheapest-sub').innerHTML = '';
         document.getElementById('stats-top-sub').innerHTML = '';
         document.getElementById('stats-oldest-sub').innerHTML = '';
@@ -760,7 +816,7 @@ function renderStats() {
     document.getElementById('stats-active-count').textContent = activeSubs.length;
     document.getElementById('stats-canceled-count').textContent = suscripciones.length - activeSubs.length;
 
-    // Render desgloses por categoría con barras de porcentaje
+    // Render desgloses por categoría con barras elegantes
     const catContainer = document.getElementById('stats-categories-container');
     if (catContainer) {
         catContainer.innerHTML = '';
@@ -784,27 +840,27 @@ function renderStats() {
         });
     }
 
-    // Suscripción más barata y más cara
-    renderSubCard('stats-cheapest-sub', cheapestSub, `${formatCurrency(calculateMonthlyCost(cheapestSub.cantidad, cheapestSub.ciclo))}${currentCurrency} al mes`);
-    renderSubCard('stats-top-sub', topSub, `${formatCurrency(calculateMonthlyCost(topSub.cantidad, topSub.ciclo))}${currentCurrency} al mes`);
+    renderSubCard('stats-cheapest-sub', cheapestSub, `${formatCurrency(calculateMonthlyCost(cheapestSub.cantidad, cheapestSub.ciclo))}${currentCurrency} / mes`);
+    renderSubCard('stats-top-sub', topSub, `${formatCurrency(calculateMonthlyCost(topSub.cantidad, topSub.ciclo))}${currentCurrency} / mes`);
 
-    // Más antigua y más reciente
     const sortedByDate = [...activeSubs].sort((a, b) => new Date(a.primeraFactura) - new Date(b.primeraFactura));
     const oldestSub = sortedByDate[0];
     const newestSub = sortedByDate[sortedByDate.length - 1];
 
-    const oldestDate = new Date(oldestSub.primeraFactura).toLocaleDateString('es-ES', { day: '2-digit', month: 'short', year: '2-digit' }).replace('.', '');
-    const newestDate = new Date(newestSub.primeraFactura).toLocaleDateString('es-ES', { day: '2-digit', month: 'short', year: '2-digit' }).replace('.', '');
+    const oldestDate = new Date(oldestSub.primeraFactura).toLocaleDateString('es-ES', { day: '2-digit', month: 'short', year: 'numeric' });
+    const newestDate = new Date(newestSub.primeraFactura).toLocaleDateString('es-ES', { day: '2-digit', month: 'short', year: 'numeric' });
 
-    renderSubCard('stats-oldest-sub', oldestSub, `Primer pago: ${oldestDate}`);
-    renderSubCard('stats-newest-sub', newestSub, `Primer pago: ${newestDate}`);
+    renderSubCard('stats-oldest-sub', oldestSub, `Desde: ${oldestDate}`);
+    renderSubCard('stats-newest-sub', newestSub, `Desde: ${newestDate}`);
+
+    lucide.createIcons();
 }
 
 function renderSubCard(containerId, sub, footerText) {
     const container = document.getElementById(containerId);
     if (!container) return;
     if (!sub) {
-        container.innerHTML = '<p style="color: var(--text-muted); font-size: 13px; padding: 10px;">No hay datos</p>';
+        container.innerHTML = '<p style="color: var(--text-tertiary); font-size: 13px; padding: 10px;">No hay datos</p>';
         return;
     }
 
@@ -812,14 +868,14 @@ function renderSubCard(containerId, sub, footerText) {
 
     container.innerHTML = `
         <div class="top-sub-card">
-            <div class="sub-logo-small" style="background: var(--hover); color: var(--text-color)">
+            <div class="sub-logo-avatar">
                 ${logoPath ?
-            `<img src="${logoPath}" onerror="this.style.display='none'; this.parentElement.textContent='${sub.nombre.charAt(0).toUpperCase()}'; this.parentElement.style.background='var(--accent)'; this.parentElement.style.color='var(--accent-contrast)'">` :
+            `<img src="${logoPath}" onerror="this.style.display='none'; this.parentElement.textContent='${sub.nombre.charAt(0).toUpperCase()}';">` :
             sub.nombre.charAt(0).toUpperCase()}
             </div>
             <div class="sub-info">
                 <strong>${sub.nombre}</strong>
-                <span>${footerText}</span>
+                <span style="font-size: 12px; color: var(--text-secondary); font-weight: 500;">${footerText}</span>
             </div>
         </div>
     `;
@@ -844,13 +900,13 @@ function exportData() {
     const url = window.URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `suscripciones_export_${getTodayDateString()}.csv`;
+    a.download = `suscripciones_${getTodayDateString()}.csv`;
     a.click();
     window.URL.revokeObjectURL(url);
 }
 
 async function logout() {
-    if (!confirm("¿Cerrar sesión?")) return;
+    if (!confirm("¿Cerrar sesión en Mis Suscripciones?")) return;
     pb.authStore.clear();
     location.reload();
 }
