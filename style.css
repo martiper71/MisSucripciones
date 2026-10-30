@@ -115,7 +115,9 @@ button:active {
     overflow-y: auto;
     overflow-x: hidden;
     background-color: var(--bg-page);
-    padding-bottom: 110px;
+    padding-bottom: calc(110px + env(safe-area-inset-bottom, 0px));
+    padding-left: env(safe-area-inset-left, 0px);
+    padding-right: env(safe-area-inset-right, 0px);
     -webkit-overflow-scrolling: touch;
 }
 
@@ -137,8 +139,8 @@ button:active {
 
 /* ICON BUTTONS */
 .icon-btn {
-    width: 42px;
-    height: 42px;
+    width: 44px;
+    height: 44px;
     border-radius: var(--radius-full);
     display: flex;
     align-items: center;
@@ -147,6 +149,11 @@ button:active {
     border: 1px solid var(--border-subtle);
     color: var(--text-primary);
     box-shadow: var(--shadow-sm);
+    flex-shrink: 0;
+    cursor: pointer;
+    touch-action: manipulation;
+    position: relative;
+    z-index: 10;
 }
 
 .icon-btn i {
@@ -157,7 +164,7 @@ button:active {
 
 /* HERO CONTAINER & MAIN HEADER */
 .main-header {
-    padding: 16px 20px 20px;
+    padding: calc(14px + env(safe-area-inset-top, 0px)) 20px 20px;
     background: var(--bg-header);
     backdrop-filter: blur(20px);
     -webkit-backdrop-filter: blur(20px);
@@ -165,6 +172,10 @@ button:active {
     top: 0;
     z-index: 50;
     border-bottom: 1px solid var(--border-subtle);
+}
+
+.view-subpage .main-header {
+    padding-bottom: 14px;
 }
 
 .header-top {
@@ -804,11 +815,11 @@ button:active {
     gap: 14px;
 }
 
-/* MODAL FORM (AÑADIR / EDITAR) */
+/* MODAL FORM (AÑADIR / EDITAR) & SUBPAGE HEADERS */
 .add-header,
 .details-header,
 .settings-header {
-    padding: 16px 20px;
+    padding: calc(14px + env(safe-area-inset-top, 0px)) 20px 14px;
     display: flex;
     align-items: center;
     justify-content: space-between;
