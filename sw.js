@@ -4,7 +4,7 @@
 //  - Imágenes y librerías: primero la caché (cambian poco).
 //  - Logos subidos a PocketBase: se guardan en una caché aparte para verlos sin conexión.
 //  - Datos de la API de PocketBase: nunca se guardan aquí (la app ya tiene su propia copia offline).
-const VERSION = 'v5';
+const VERSION = 'v6';
 const CACHE_NAME = `suscripciones-${VERSION}`;
 const PB_LOGO_CACHE = 'suscripciones-logos-pb';
 const NETWORK_TIMEOUT_MS = 4000;
@@ -16,7 +16,7 @@ const PRECACHE = [
   './app.js',
   './manifest.json',
   './vendor/pocketbase-0.28.1.umd.js',
-  './vendor/lucide-1.59.0.min.js',
+  './vendor/lucide-1.59.0.min.js?r=2',
   './icons/icon-192.png',
   './icons/icon-512.png',
   './icons/apple-touch-icon.png',

@@ -3,446 +3,346 @@
 
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport"
-        content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>Mis Suscripciones</title>
     <link rel="manifest" href="manifest.json">
     <link rel="stylesheet" href="style.css">
     <link rel="icon" type="image/png" href="icons/icon-192.png">
     <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
-    <meta name="theme-color" content="#f8fafc">
+    <meta name="theme-color" content="#f2f3f5">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <meta name="apple-mobile-web-app-title" content="Suscripciones">
 
-    <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500..800&family=Onest:wght@400;500;600;700&display=swap" rel="stylesheet">
 
-    <!-- PocketBase & Icons (alojados en el NAS, versión fija) -->
+    <!-- PocketBase e iconos (alojados en el NAS, versión fija) -->
     <script src="vendor/pocketbase-0.28.1.umd.js"></script>
-    <script src="vendor/lucide-1.59.0.min.js"></script>
+    <script src="vendor/lucide-1.59.0.min.js?r=2"></script>
 </head>
 
 <body>
 
-    <!-- LOGIN -->
-    <div id="auth-container" class="view">
-        <div class="login-wrap">
-            <div class="login-box">
-                <div class="login-brand-icon">
-                    <i data-lucide="layers"></i>
-                </div>
-                <h2>Mis Suscripciones</h2>
-                <p>Gestiona y controla todos tus pagos periódicos</p>
-                <form id="login-form" onsubmit="event.preventDefault(); login();">
-                    <input type="email" id="login-email" placeholder="Correo electrónico" autocomplete="username" inputmode="email" required>
-                    <input type="password" id="login-pass" placeholder="Contraseña" autocomplete="current-password" required>
-                    <button type="submit" id="btn-login">Iniciar sesión</button>
-                </form>
-            </div>
+    <!-- ACCESO -->
+    <div id="auth-container" class="view view-login">
+        <div class="login-hero">
+            <img src="icons/icon-192.png" alt="" class="login-icon" width="72" height="72">
+            <h1>Mis suscripciones</h1>
+            <p>Todos tus cobros periódicos en un sitio.</p>
         </div>
+        <form id="login-form" class="login-form" onsubmit="event.preventDefault(); login();">
+            <label class="field">
+                <span>Correo electrónico</span>
+                <input type="email" id="login-email" autocomplete="username" inputmode="email" required>
+            </label>
+            <label class="field">
+                <span>Contraseña</span>
+                <input type="password" id="login-pass" autocomplete="current-password" required>
+            </label>
+            <button type="submit" id="btn-login" class="btn btn-primary btn-block">Entrar</button>
+        </form>
     </div>
 
-    <!-- PANTALLA PRINCIPAL: INICIO -->
-    <div id="view-home" class="view">
-        <header class="main-header">
-            <div class="header-top">
-                <div class="app-brand">
-                    <div class="brand-dot"></div>
-                    <span class="header-t">Mis Suscripciones</span>
+    <!-- COBROS (INICIO) -->
+    <div id="view-home" class="view view-tab">
+        <header class="topbar">
+            <h1 class="page-title">Mis suscripciones</h1>
+            <button class="icon-btn" onclick="showView('view-settings')" aria-label="Ajustes">
+                <i data-lucide="settings"></i>
+            </button>
+        </header>
+
+        <section class="horizon" aria-labelledby="horizon-title">
+            <p class="horizon-label" id="horizon-title">En los próximos 30 días</p>
+            <p class="horizon-amount" id="horizon-total">0,00 €</p>
+            <p class="horizon-next" id="horizon-next">Sin cobros a la vista.</p>
+            <div class="horizon-strip" id="horizon-strip" aria-hidden="true"></div>
+            <div class="horizon-axis" id="horizon-axis" aria-hidden="true"></div>
+            <dl class="horizon-facts">
+                <div>
+                    <dt>Media al mes</dt>
+                    <dd id="total-monthly-spend">0,00 €</dd>
                 </div>
-                <button class="icon-btn" onclick="showView('view-settings')" title="Ajustes">
-                    <i data-lucide="settings"></i>
+                <div>
+                    <dt>Al año</dt>
+                    <dd id="home-annual-projection">0,00 €</dd>
+                </div>
+                <div>
+                    <dt>Activas</dt>
+                    <dd id="hero-badge-active">0</dd>
+                </div>
+            </dl>
+        </section>
+
+        <div class="filters">
+            <div class="search-box">
+                <i data-lucide="search" class="search-icon"></i>
+                <input type="search" id="home-search-input" placeholder="Buscar" aria-label="Buscar suscripción"
+                    oninput="handleSearch(this.value)">
+                <button id="search-clear-btn" class="search-clear" onclick="clearSearch()" aria-label="Borrar búsqueda" style="display: none;">
+                    <i data-lucide="x"></i>
                 </button>
             </div>
+            <div class="chips" id="home-category-pills" role="group" aria-label="Filtrar por categoría">
+                <button class="pill active" data-cat="all" onclick="filterByCategory('all')">Todas</button>
+                <button class="pill" data-cat="MULTIMEDIA" onclick="filterByCategory('MULTIMEDIA')"><span class="cat-dot" data-cat="MULTIMEDIA"></span>Multimedia</button>
+                <button class="pill" data-cat="MÚSICA" onclick="filterByCategory('MÚSICA')"><span class="cat-dot" data-cat="MÚSICA"></span>Música</button>
+                <button class="pill" data-cat="HERRAMIENTAS" onclick="filterByCategory('HERRAMIENTAS')"><span class="cat-dot" data-cat="HERRAMIENTAS"></span>Herramientas</button>
+                <button class="pill" data-cat="SALUD Y FITNESS" onclick="filterByCategory('SALUD Y FITNESS')"><span class="cat-dot" data-cat="SALUD Y FITNESS"></span>Salud</button>
+                <button class="pill" data-cat="GENERAL" onclick="filterByCategory('GENERAL')"><span class="cat-dot" data-cat="GENERAL"></span>General</button>
+            </div>
+        </div>
 
-            <!-- TARJETA HERO DE GASTO MENSUAL -->
-            <div class="hero-spend-card">
-                <div class="hero-label">
-                    <span>Gasto Mensual Estimado</span>
-                    <span class="hero-badge" id="hero-badge-active">0 ACTIVAS</span>
-                </div>
-                <div class="hero-amount" id="total-monthly-spend">0,00€</div>
-                <div class="hero-metrics">
-                    <div class="hero-metric-item">
-                        <span class="metric-title">Proyección Anual</span>
-                        <span class="metric-value" id="home-annual-projection">0,00€</span>
-                    </div>
-                    <div class="hero-metric-item">
-                        <span class="metric-title">Próximo Cobro</span>
-                        <span class="metric-value" id="home-next-charge-info">-</span>
-                    </div>
-                </div>
+        <section class="content" id="subs-list-container"></section>
+    </div>
+
+    <!-- RESUMEN -->
+    <div id="view-stats" class="view view-tab">
+        <header class="topbar">
+            <h1 class="page-title">Resumen</h1>
+            <button class="icon-btn" onclick="showView('view-settings')" aria-label="Ajustes">
+                <i data-lucide="settings"></i>
+            </button>
+        </header>
+
+        <section class="content">
+            <div class="statement">
+                <p class="statement-main" id="stats-total-monthly">0,00 € al mes</p>
+                <p class="statement-sub" id="stats-total-annual"></p>
             </div>
 
-            <!-- BUSCADOR Y FILTROS -->
-            <div class="search-filter-bar">
-                <div class="search-box">
-                    <i data-lucide="search" class="search-icon"></i>
-                    <input type="text" id="home-search-input" placeholder="Buscar suscripción..." oninput="handleSearch(this.value)">
-                    <button id="search-clear-btn" class="search-clear" onclick="clearSearch()" style="display: none;">
-                        <i data-lucide="x"></i>
+            <h2 class="section-title">Por categoría</h2>
+            <div class="panel panel-pad">
+                <div class="stack-bar" id="stats-stack-bar"></div>
+                <ul class="legend" id="stats-categories-container"></ul>
+            </div>
+
+            <h2 class="section-title">Lo que más pesa</h2>
+            <ul class="list" id="stats-ranking"></ul>
+
+            <h2 class="section-title">Curiosidades</h2>
+            <ul class="list" id="stats-facts"></ul>
+
+            <ul class="list list-gap">
+                <li>
+                    <button class="row row-link" onclick="showCanceledList()">
+                        <span class="row-icon"><i data-lucide="archive"></i></span>
+                        <span class="row-main">Canceladas</span>
+                        <span class="row-value" id="stats-canceled-count">0</span>
+                        <i data-lucide="chevron-right" class="row-chevron"></i>
                     </button>
-                </div>
-                <div class="category-pills" id="home-category-pills">
-                    <button class="pill active" data-cat="all" onclick="filterByCategory('all')">Todos</button>
-                    <button class="pill" data-cat="MULTIMEDIA" onclick="filterByCategory('MULTIMEDIA')">Multimedia</button>
-                    <button class="pill" data-cat="MÚSICA" onclick="filterByCategory('MÚSICA')">Música</button>
-                    <button class="pill" data-cat="HERRAMIENTAS" onclick="filterByCategory('HERRAMIENTAS')">Herramientas</button>
-                    <button class="pill" data-cat="SALUD Y FITNESS" onclick="filterByCategory('SALUD Y FITNESS')">Salud</button>
-                    <button class="pill" data-cat="GENERAL" onclick="filterByCategory('GENERAL')">General</button>
-                </div>
-            </div>
-        </header>
-
-        <section class="main-content" id="subs-list-container">
-            <!-- Los grupos de suscripciones en formato Card moderna se inyectan aquí -->
+                </li>
+            </ul>
         </section>
-
-        <div class="timeline-end">FIN DEL CRONOGRAMA</div>
-
-        <!-- FAB (Añadir) -->
-        <button class="fab-add" onclick="showAdd()" title="Nueva suscripción">
-            <i data-lucide="plus"></i>
-        </button>
-
-        <!-- FLOATING BOTTOM NAV -->
-        <nav class="bottom-nav">
-            <button type="button" class="nav-item" id="nav-home" onclick="showView('view-home')">
-                <i data-lucide="calendar"></i>
-                <span>Cronograma</span>
-            </button>
-            <button type="button" class="nav-item" id="nav-stats" onclick="showView('view-stats')">
-                <i data-lucide="pie-chart"></i>
-                <span>Estadísticas</span>
-            </button>
-        </nav>
     </div>
 
-    <!-- PANTALLA ESTADÍSTICAS -->
-    <div id="view-stats" class="view">
-        <header class="main-header">
-            <div class="header-top">
-                <div class="app-brand">
-                    <div class="brand-dot"></div>
-                    <span class="header-t">Panel de Análisis</span>
-                </div>
-                <button class="icon-btn" onclick="showView('view-settings')">
-                    <i data-lucide="settings"></i>
-                </button>
-            </div>
-
-            <div class="hero-spend-card">
-                <div class="hero-label">
-                    <span>Gasto Mensual Total</span>
-                    <span class="hero-badge">RESUMEN</span>
-                </div>
-                <div class="hero-amount" id="stats-total-monthly">0,00€</div>
-                <div class="hero-metrics">
-                    <div class="hero-metric-item">
-                        <span class="metric-title">Gasto Anual Proyectado</span>
-                        <span class="metric-value" id="stats-total-annual">0,00€</span>
-                    </div>
-                </div>
-            </div>
+    <!-- AÑADIR / EDITAR -->
+    <div id="view-add" class="view view-sheet">
+        <header class="sheetbar">
+            <button class="text-btn" onclick="cancelEdit()">Cancelar</button>
+            <h2 id="add-modal-title">Nueva suscripción</h2>
+            <button class="text-btn text-btn-strong" id="btn-save" onclick="saveSubscription()">Guardar</button>
         </header>
 
-        <section class="stats-content">
-            <div class="stats-card-grid">
-                <div class="stats-mini-card">
-                    <span class="mini-label">Total</span>
-                    <strong id="stats-sub-count">0</strong>
+        <div class="content">
+            <div class="amount-entry">
+                <label for="add-amount" class="visually-hidden">Importe</label>
+                <div class="amount-line">
+                    <input type="number" id="add-amount" inputmode="decimal" placeholder="0,00" step="0.01" min="0" oninput="sizeAmountInput()">
+                    <span class="amount-currency" id="currency-symbol-add">€</span>
                 </div>
-                <div class="stats-mini-card">
-                    <span class="mini-label">Activas</span>
-                    <strong id="stats-active-count" style="color: var(--success)">0</strong>
-                </div>
-                <div class="stats-mini-card" onclick="showCanceledList()" style="cursor: pointer;">
-                    <span class="mini-label">Canceladas</span>
-                    <strong id="stats-canceled-count" style="color: var(--danger)">0</strong>
-                </div>
+                <input type="text" id="add-name" class="name-input" placeholder="Nombre del servicio" aria-label="Nombre del servicio" autocomplete="off">
             </div>
 
-            <!-- DESGLOSE POR CATEGORÍA -->
-            <div class="stats-section">
-                <div class="section-title">Gasto Mensual por Categoría</div>
-                <div id="stats-categories-container" class="categories-breakdown">
-                    <!-- Inyectado por JS -->
-                </div>
+            <h3 class="section-title">Cada cuánto se cobra</h3>
+            <div class="segmented" role="group" aria-label="Ciclo de facturación">
+                <button type="button" class="tab active" data-cycle="mensual" onclick="setCycle('mensual')">Mes</button>
+                <button type="button" class="tab" data-cycle="trimestral" onclick="setCycle('trimestral')">3 meses</button>
+                <button type="button" class="tab" data-cycle="semestral" onclick="setCycle('semestral')">6 meses</button>
+                <button type="button" class="tab" data-cycle="anual" onclick="setCycle('anual')">Año</button>
             </div>
 
-            <!-- DESTACADAS -->
-            <div class="stats-section">
-                <div class="section-title">Suscripción Más Cara</div>
-                <div id="stats-top-sub" class="top-sub-display">
-                    <!-- Inyectado aquí -->
-                </div>
-            </div>
+            <ul class="list list-gap">
+                <li class="row">
+                    <label class="row-main" for="add-date">Primer cobro</label>
+                    <input type="date" id="add-date" class="row-input">
+                </li>
+                <li class="row">
+                    <label class="row-main" for="add-category">Categoría</label>
+                    <select id="add-category" class="row-input">
+                        <option value="AUTO">Automática</option>
+                        <option value="MULTIMEDIA">Multimedia</option>
+                        <option value="MÚSICA">Música</option>
+                        <option value="HERRAMIENTAS">Herramientas</option>
+                        <option value="SALUD Y FITNESS">Salud</option>
+                        <option value="GENERAL">General</option>
+                    </select>
+                </li>
+            </ul>
+            <p class="hint">Los siguientes cobros se calculan solos a partir de esta fecha.</p>
 
-            <div class="stats-section">
-                <div class="section-title">Suscripción Más Económica</div>
-                <div id="stats-cheapest-sub" class="top-sub-display">
-                    <!-- Inyectado aquí -->
-                </div>
-            </div>
-
-            <div class="stats-section">
-                <div class="section-title">Suscripción Más Antigua</div>
-                <div id="stats-oldest-sub" class="top-sub-display">
-                    <!-- Inyectado aquí -->
-                </div>
-            </div>
-
-            <div class="stats-section">
-                <div class="section-title">Suscripción Más Reciente</div>
-                <div id="stats-newest-sub" class="top-sub-display">
-                    <!-- Inyectado aquí -->
-                </div>
-            </div>
-        </section>
-
-        <!-- FLOATING BOTTOM NAV -->
-        <nav class="bottom-nav">
-            <button type="button" class="nav-item" id="nav-home-stats" onclick="showView('view-home')">
-                <i data-lucide="calendar"></i>
-                <span>Cronograma</span>
-            </button>
-            <button type="button" class="nav-item active" id="nav-stats-stats" onclick="showView('view-stats')">
-                <i data-lucide="pie-chart"></i>
-                <span>Estadísticas</span>
-            </button>
-        </nav>
-    </div>
-
-    <!-- PANTALLA AÑADIR/EDITAR -->
-    <div id="view-add" class="view">
-        <header class="add-header">
-            <button class="text-btn text-muted" onclick="showView('view-home')">Cancelar</button>
-            <h3 id="add-modal-title">NUEVA SUSCRIPCIÓN</h3>
-            <button class="text-btn text-primary" id="btn-save" onclick="saveSubscription()">Guardar</button>
-        </header>
-
-        <div class="form-container">
-            <div class="input-group">
-                <label>Nombre del servicio</label>
-                <input type="text" id="add-name" placeholder="Ej. Netflix, Spotify, Gym...">
-            </div>
-
-            <div class="input-group">
-                <label>Importe y Moneda</label>
-                <div class="currency-input">
-                    <input type="number" id="add-amount" placeholder="0.00" step="0.01">
-                    <span class="currency-symbol" id="currency-symbol-add">€</span>
-                </div>
-            </div>
-
-            <div class="input-group">
-                <label>Ciclo de facturación</label>
-                <div class="tabs">
-                    <button type="button" class="tab active" data-cycle="mensual" onclick="setCycle('mensual')">Mensual</button>
-                    <button type="button" class="tab" data-cycle="trimestral" onclick="setCycle('trimestral')">Trimestral</button>
-                    <button type="button" class="tab" data-cycle="semestral" onclick="setCycle('semestral')">Semestral</button>
-                    <button type="button" class="tab" data-cycle="anual" onclick="setCycle('anual')">Anual</button>
-                </div>
-            </div>
-
-            <div class="input-group">
-                <label>Categoría</label>
-                <select id="add-category">
-                    <option value="AUTO">Automática (según nombre)</option>
-                    <option value="MULTIMEDIA">Multimedia (Streaming, TV)</option>
-                    <option value="MÚSICA">Música & Podcasts</option>
-                    <option value="HERRAMIENTAS">Herramientas & Software</option>
-                    <option value="SALUD Y FITNESS">Salud & Fitness</option>
-                    <option value="GENERAL">General / Otros</option>
-                </select>
-            </div>
-
-            <div class="input-group">
-                <label>Fecha de cobro / Primera factura</label>
-                <input type="date" id="add-date">
-                <p class="hint">El siguiente cobro se proyectará de forma automática según el ciclo.</p>
-            </div>
-
-            <div class="input-group">
-                <label>Icono / Logo del servicio</label>
-                <div class="preset-logos-section">
-                    <span class="preset-label">Logos rápidos sugeridos:</span>
-                    <div class="preset-logos-grid" id="preset-logos-container">
-                        <!-- Generado por JS -->
-                    </div>
-                </div>
-                <div class="logo-upload-wrap">
-                    <div class="logo-preview-big" id="logo-preview-img">
-                        <i data-lucide="image"></i>
-                    </div>
-                    <div class="logo-upload-controls">
-                        <button type="button" class="text-btn text-muted"
-                            onclick="document.getElementById('logo-file-input').click()" style="background: var(--bg-card); border: 1px solid var(--border-card);">
-                            Subir imagen propia
+            <h3 class="section-title">Logo</h3>
+            <div class="panel panel-pad">
+                <div class="logo-picker">
+                    <div class="logo-preview" id="logo-preview-img"><i data-lucide="image"></i></div>
+                    <div class="logo-actions">
+                        <button type="button" class="btn btn-soft" onclick="document.getElementById('logo-file-input').click()">
+                            <i data-lucide="upload"></i> Subir imagen
                         </button>
-                        <button type="button" class="text-btn text-danger" id="btn-clear-logo" onclick="clearSelectedLogo()" style="display:none; margin-left: 8px;">
-                            Quitar
-                        </button>
-                        <input type="file" id="logo-file-input" accept="image/*" style="display: none;"
-                            onchange="previewSelectedFile()">
-                        <p class="hint">Selecciona un logo rápido arriba o sube tu propio archivo.</p>
+                        <button type="button" class="btn btn-ghost-danger" id="btn-clear-logo" onclick="clearSelectedLogo()" style="display:none;">Quitar</button>
+                        <input type="file" id="logo-file-input" accept="image/*" style="display: none;" onchange="previewSelectedFile()">
                     </div>
                 </div>
+                <div class="preset-strip" id="preset-logos-container"></div>
             </div>
         </div>
     </div>
 
-    <!-- PANTALLA DETALLES DE SUSCRIPCIÓN -->
-    <div id="view-details" class="view">
-        <header class="details-header">
-            <button class="icon-btn" onclick="showView('view-home')">
+    <!-- DETALLE -->
+    <div id="view-details" class="view view-sheet">
+        <header class="sheetbar">
+            <button class="icon-btn icon-btn-flat" onclick="closeDetails()" aria-label="Volver">
                 <i data-lucide="chevron-left"></i>
             </button>
-            <span class="header-t">Detalles</span>
-            <button class="icon-btn" onclick="editCurrentSub()">
-                <i data-lucide="edit-3"></i>
-            </button>
+            <span></span>
+            <button class="text-btn text-btn-strong" onclick="editCurrentSub()">Editar</button>
         </header>
 
-        <div class="details-main">
-            <div class="sub-logo" id="det-logo"></div>
-            <div class="sub-title" id="det-title">SERVICIO</div>
-            <div class="sub-price">
-                <span id="det-price-val">0.00€</span><span class="sub-cycle" id="det-price-cyc">/mes</span>
+        <div class="content">
+            <div class="detail-head">
+                <div class="logo logo-xl" id="det-logo"></div>
+                <h2 id="det-title">Servicio</h2>
+                <p class="detail-price"><span id="det-price-val">0,00 €</span> <span id="det-price-cyc">al mes</span></p>
+                <p class="status" id="det-status"></p>
             </div>
 
-            <div class="status-pill active-pill" id="det-status">
-                <div class="dot green-dot"></div> ACTIVA
-            </div>
+            <div class="next-callout" id="det-next-callout"></div>
 
-            <div class="details-grid">
-                <div class="grid-card">
-                    <span class="card-label">Coste Anual</span>
-                    <strong class="card-val" id="det-annual">0.00€</strong>
-                </div>
-                <div class="grid-card">
-                    <span class="card-label">Próximo Cobro</span>
-                    <strong class="card-val" id="det-next">-</strong>
-                </div>
-                <div class="grid-card">
-                    <span class="card-label">Cobro Anterior</span>
-                    <strong class="card-val" id="det-prev">-</strong>
-                </div>
-                <div class="grid-card">
-                    <span class="card-label">Inicio</span>
-                    <strong class="card-val" id="det-cat">-</strong>
-                </div>
-            </div>
+            <ul class="list">
+                <li class="row"><span class="row-main">Próximo cobro</span><span class="row-value" id="det-next">-</span></li>
+                <li class="row"><span class="row-main">Cobro anterior</span><span class="row-value" id="det-prev">-</span></li>
+                <li class="row"><span class="row-main">Coste al año</span><span class="row-value" id="det-annual">-</span></li>
+                <li class="row"><span class="row-main">Categoría</span><span class="row-value" id="det-category">-</span></li>
+                <li class="row"><span class="row-main">Desde</span><span class="row-value" id="det-cat">-</span></li>
+            </ul>
 
-            <button class="btn-action-outline btn-warning" id="btn-cancel-sub" onclick="cancelCurrentSub()">
-                <i data-lucide="x-circle"></i> Cancelar Suscripción
-            </button>
-
-            <button class="btn-action-outline btn-success" id="btn-reactivate-sub" onclick="reactivateCurrentSub()" style="display: none;">
-                <i data-lucide="rotate-ccw"></i> Reactivar Suscripción
-            </button>
-
-            <button class="btn-action-outline btn-danger" onclick="deleteCurrentSub()">
-                <i data-lucide="trash-2"></i> Eliminar Definitivamente
-            </button>
+            <ul class="list list-gap">
+                <li>
+                    <button class="row row-link row-warning" id="btn-cancel-sub" onclick="cancelCurrentSub()">
+                        <span class="row-icon"><i data-lucide="x-circle"></i></span>
+                        <span class="row-main">Cancelar suscripción</span>
+                    </button>
+                </li>
+                <li>
+                    <button class="row row-link row-success" id="btn-reactivate-sub" onclick="reactivateCurrentSub()" style="display: none;">
+                        <span class="row-icon"><i data-lucide="rotate-ccw"></i></span>
+                        <span class="row-main">Reactivar suscripción</span>
+                    </button>
+                </li>
+                <li>
+                    <button class="row row-link row-danger" onclick="deleteCurrentSub()">
+                        <span class="row-icon"><i data-lucide="trash-2"></i></span>
+                        <span class="row-main">Eliminar para siempre</span>
+                    </button>
+                </li>
+            </ul>
         </div>
     </div>
 
-    <!-- PANTALLA LISTA CANCELADAS -->
-    <div id="view-canceled" class="view view-subpage">
-        <header class="settings-header">
-            <button class="icon-btn" onclick="showView('view-stats')">
+    <!-- CANCELADAS -->
+    <div id="view-canceled" class="view view-sheet">
+        <header class="sheetbar">
+            <button class="icon-btn icon-btn-flat" onclick="showView('view-stats')" aria-label="Volver">
                 <i data-lucide="chevron-left"></i>
             </button>
-            <span class="header-t">Historial Canceladas</span>
-            <div style="width: 44px;"></div>
+            <h2>Canceladas</h2>
+            <span class="sheetbar-spacer"></span>
         </header>
-
-        <section class="main-content" id="canceled-list-container">
-            <!-- Las suscripciones canceladas se inyectarán aquí -->
-        </section>
-
-        <div class="timeline-end">FIN DEL HISTORIAL</div>
+        <section class="content" id="canceled-list-container"></section>
     </div>
 
-    <!-- PANTALLA AJUSTES -->
-    <div id="view-settings" class="view">
-        <header class="settings-header">
-            <button class="icon-btn" onclick="showView('view-home')">
+    <!-- AJUSTES -->
+    <div id="view-settings" class="view view-sheet">
+        <header class="sheetbar">
+            <button class="icon-btn icon-btn-flat" onclick="closeSettings()" aria-label="Volver">
                 <i data-lucide="chevron-left"></i>
             </button>
             <h2>Ajustes</h2>
-            <div style="width: 42px;"></div>
+            <span class="sheetbar-spacer"></span>
         </header>
 
-        <div class="settings-section">
-            <div class="section-title">Apariencia y Preferencias</div>
-            <div class="settings-card">
-                <div class="settings-item">
-                    <div class="si-info">
-                        <strong>Tema Visual</strong>
-                        <span>Modo claro, oscuro OLED o según sistema</span>
-                    </div>
-                    <select id="settings-theme" onchange="updateTheme(this.value)">
-                        <option value="auto">Sistema</option>
+        <div class="content">
+            <h3 class="section-title">Apariencia</h3>
+            <ul class="list">
+                <li class="row">
+                    <label class="row-main" for="settings-theme">Tema</label>
+                    <select id="settings-theme" class="row-input" onchange="updateTheme(this.value)">
+                        <option value="auto">Como el sistema</option>
                         <option value="light">Claro</option>
-                        <option value="dark">Oscuro (OLED)</option>
+                        <option value="dark">Oscuro</option>
                     </select>
-                </div>
-                <div class="settings-item">
-                    <div class="si-info">
-                        <strong>Moneda Predeterminada</strong>
-                        <span>Divisa para cálculos y proyecciones</span>
-                    </div>
-                    <select id="settings-currency" onchange="updateCurrency()">
-                        <option value="€" selected>EUR (€)</option>
-                        <option value="$">USD ($)</option>
+                </li>
+                <li class="row">
+                    <label class="row-main" for="settings-currency">Moneda</label>
+                    <select id="settings-currency" class="row-input" onchange="updateCurrency()">
+                        <option value="€" selected>Euro (€)</option>
+                        <option value="$">Dólar ($)</option>
                     </select>
-                </div>
-            </div>
-        </div>
+                </li>
+            </ul>
 
-        <div class="settings-section">
-            <div class="section-title">Datos y Cuenta</div>
-            <div class="settings-card">
-                <div class="settings-item clickable" onclick="exportData()" style="cursor: pointer;">
-                    <div class="si-info">
-                        <strong>Exportar Datos a CSV</strong>
-                        <span>Descargar copia de seguridad en hoja de cálculo</span>
-                    </div>
-                    <i data-lucide="download" style="color: var(--text-secondary);"></i>
-                </div>
-                <div class="settings-item clickable" onclick="logout()" style="cursor: pointer;">
-                    <div class="si-info">
-                        <strong class="text-danger">Cerrar Sesión</strong>
-                        <span>Salir de la cuenta en este dispositivo</span>
-                    </div>
-                    <i data-lucide="log-out" class="text-danger"></i>
-                </div>
-            </div>
-        </div>
+            <h3 class="section-title">Datos</h3>
+            <ul class="list">
+                <li>
+                    <button class="row row-link" onclick="exportData()">
+                        <span class="row-icon"><i data-lucide="download"></i></span>
+                        <span class="row-main">Exportar a CSV<small>Copia para Excel o Numbers</small></span>
+                    </button>
+                </li>
+                <li>
+                    <button class="row row-link row-danger" onclick="logout()">
+                        <span class="row-icon"><i data-lucide="log-out"></i></span>
+                        <span class="row-main">Cerrar sesión</span>
+                    </button>
+                </li>
+            </ul>
 
-        <div class="settings-footer">
-            <img src="cartoon.webp" alt="Martiper" class="creator-img" width="140" height="140" loading="lazy">
-            <div class="creator-text">Diseñado & Desarrollado por Martiper</div>
+            <footer class="credits">
+                <img src="cartoon.webp" alt="" class="credits-img" width="56" height="56" loading="lazy">
+                <p>Diseñada y desarrollada por Martiper</p>
+            </footer>
         </div>
     </div>
+
+    <!-- BARRA INFERIOR -->
+    <nav class="tabbar" id="tabbar" aria-label="Secciones">
+        <button type="button" class="nav-item" id="nav-home" onclick="showView('view-home')">
+            <i data-lucide="calendar-days"></i>
+            <span>Cobros</span>
+        </button>
+        <button type="button" class="nav-add" onclick="showAdd()" aria-label="Añadir suscripción">
+            <i data-lucide="plus"></i>
+        </button>
+        <button type="button" class="nav-item" id="nav-stats" onclick="showView('view-stats')">
+            <i data-lucide="pie-chart"></i>
+            <span>Resumen</span>
+        </button>
+    </nav>
 
     <!-- DIÁLOGO PROPIO (sustituye a alert/confirm del navegador) -->
     <div id="app-dialog" class="dialog-backdrop" hidden>
         <div class="dialog-box" role="alertdialog" aria-modal="true" aria-labelledby="dialog-msg">
             <p id="dialog-msg"></p>
             <div class="dialog-actions">
-                <button type="button" id="dialog-cancel" class="dialog-btn">Cancelar</button>
+                <button type="button" id="dialog-cancel" class="dialog-btn">Volver</button>
                 <button type="button" id="dialog-ok" class="dialog-btn dialog-btn-primary">Aceptar</button>
             </div>
         </div>
     </div>
 
-    <div id="toast" class="toast" role="status" aria-live="polite">Mensaje</div>
+    <div id="toast" class="toast" role="status" aria-live="polite"></div>
 
     <script src="app.js"></script>
 </body>
