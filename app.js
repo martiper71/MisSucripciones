@@ -659,25 +659,6 @@ function renderHome() {
         nextEl.textContent = `${horizonCount} ${plural}. El próximo, ${closest.nombre} ${relativePhrase(closest._nextBill)}.`;
     }
 
-    const max = Math.max(...perDay, 0.01);
-    document.getElementById('horizon-strip').innerHTML = perDay.map((v, i) => {
-        const cls = ['day', v > 0 ? 'has' : '', i === 0 ? 'today' : ''].join(' ').trim();
-        const h = v > 0 ? `${22 + 78 * (v / max)}%` : '4px';
-        return `<span class="${cls}" style="height:${h}"></span>`;
-    }).join('');
-
-    const axis = [`<span style="grid-column:1 / span 6">Hoy</span>`];
-    for (let i = 4; i < 23; i++) {
-        const d = new Date(today);
-        d.setDate(today.getDate() + i);
-        if (d.getDate() === 1) {
-            const label = d.toLocaleDateString('es-ES', { day: 'numeric', month: 'short' }).replace('.', '');
-            axis.push(`<span style="grid-column:${i + 1} / span 6">${label}</span>`);
-        }
-    }
-    const endLabel = horizonEnd.toLocaleDateString('es-ES', { day: 'numeric', month: 'short' }).replace('.', '');
-    axis.push(`<span style="grid-column:25 / span 6; text-align:right">${endLabel}</span>`);
-    document.getElementById('horizon-axis').innerHTML = axis.join('');
 
     document.getElementById('total-monthly-spend').textContent = money(totalMensual);
     document.getElementById('home-annual-projection').textContent = money(totalMensual * 12);
