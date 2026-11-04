@@ -1375,3 +1375,115 @@ button:active {
     z-index: 1000;
     box-shadow: var(--shadow-lg);
 }
+
+/* ===== Botones reales en navegación y pestañas (antes eran div) ===== */
+button.nav-item,
+button.tab {
+    -webkit-appearance: none;
+    appearance: none;
+    border: 0;
+    font-family: inherit;
+    background: transparent;
+}
+
+button.tab.active {
+    background: var(--bg-card);
+}
+
+.nav-item:focus-visible,
+.tab:focus-visible,
+.pill:focus-visible,
+.icon-btn:focus-visible,
+.dialog-btn:focus-visible {
+    outline: 2px solid var(--brand-primary);
+    outline-offset: 2px;
+}
+
+/* iOS: con texto < 16px Safari hace zoom al tocar un campo; ahora que el zoom está permitido, lo evitamos así */
+@supports (-webkit-touch-callout: none) {
+    input,
+    select,
+    textarea {
+        font-size: 16px !important;
+    }
+}
+
+/* ===== Diálogo propio ===== */
+.dialog-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 1000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+    background: rgba(15, 23, 42, 0.45);
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+    opacity: 0;
+    transition: opacity 0.15s ease;
+}
+
+.dialog-backdrop[hidden] {
+    display: none;
+}
+
+.dialog-backdrop.open {
+    opacity: 1;
+}
+
+.dialog-box {
+    width: 100%;
+    max-width: 340px;
+    background: var(--bg-card);
+    color: var(--text-primary);
+    border: 1px solid var(--border-card);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-lg);
+    padding: 22px 20px 16px;
+    transform: scale(0.96);
+    transition: transform 0.15s ease;
+}
+
+.dialog-backdrop.open .dialog-box {
+    transform: scale(1);
+}
+
+.dialog-box p {
+    font-size: 15px;
+    font-weight: 500;
+    line-height: 1.45;
+    margin: 0 0 18px;
+}
+
+.dialog-actions {
+    display: flex;
+    gap: 10px;
+}
+
+.dialog-btn {
+    flex: 1;
+    padding: 12px;
+    border-radius: var(--radius-md);
+    border: 1px solid var(--border-card);
+    background: var(--bg-page);
+    color: var(--text-primary);
+    font-family: inherit;
+    font-size: 14px;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.dialog-btn[hidden] {
+    display: none;
+}
+
+.dialog-btn-primary {
+    background: var(--brand-primary);
+    border-color: transparent;
+    color: #ffffff;
+}
+
+.dialog-btn-primary.dialog-btn-danger {
+    background: var(--danger);
+}

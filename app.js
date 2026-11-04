@@ -29,7 +29,8 @@ const PRESET_LOGOS = [
     { name: 'IPTV', file: 'logos/iptv.png' },
     { name: 'Parcel', file: 'logos/parcel.png' },
     { name: 'Retouch', file: 'logos/retouch.png' },
-    { name: 'TinyMediaManager', file: 'logos/tinymediamanager.png' }
+    { name: 'TinyMediaManager', file: 'logos/tinymediamanager.png' },
+    { name: 'Claude', file: 'logos/claude.png' }
 ];
 
 // UTILIDADES: escapar texto antes de meterlo en HTML (nombres con apóstrofos, comillas, < >...)
@@ -57,7 +58,8 @@ function logoImgHtml(sub) {
     const url = getSubscriptionLogoUrl(sub);
     const initial = escapeHtml(getInitial(sub));
     if (!url) return `<span>${initial}</span>`;
-    return `<img src="${escapeHtml(url)}" alt="" data-initial="${initial}" onerror="logoFallback(this)">`;
+    const cors = /^https?:/.test(url) ? ' crossorigin="anonymous"' : '';
+    return `<img src="${escapeHtml(url)}"${cors} alt="" data-initial="${initial}" onerror="logoFallback(this)">`;
 }
 
 // GESTIÓN DEL TEMA (Dark / Light / Auto)
@@ -67,6 +69,11 @@ function applyTheme(theme) {
         document.documentElement.setAttribute('data-theme', prefersDark ? 'dark' : 'light');
     } else {
         document.documentElement.setAttribute('data-theme', theme);
+    }
+    const meta = document.querySelector('meta[name="theme-color"]');
+    if (meta) {
+        const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+        meta.setAttribute('content', isDark ? '#090d16' : '#f8fafc');
     }
 }
 
@@ -393,7 +400,7 @@ async function login() {
     const pass = document.getElementById('login-pass').value;
     const btn = document.getElementById('btn-login');
 
-    if (!email || !pass) return alert("Por favor completa tu correo y contraseña");
+    if (!email || !pass) return appAlert("Por favor completa tu correo y contraseña");
 
     try {
         btn.disabled = true;
@@ -405,7 +412,7 @@ async function login() {
         showView('view-home');
         await loadSuscripciones();
     } catch (e) {
-        alert("Error de inicio de sesión: " + e.message);
+        appAlert("Error de inicio de sesión: " + e.message);
         btn.disabled = false;
         btn.textContent = "Iniciar sesión";
     }
@@ -517,7 +524,7 @@ function getCategoryGuess(name) {
     if (n.includes('netflix') || n.includes('hbo') || n.includes('disney') || n.includes('prime') || n.includes('youtube') || n.includes('apple') || n.includes('infuse') || n.includes('iptv') || n.includes('tinymedia')) return "MULTIMEDIA";
     if (n.includes('spotify') || n.includes('apple music') || n.includes('tidal') || n.includes('deezer') || n.includes('amazon music')) return "MÚSICA";
     if (n.includes('gym') || n.includes('equinox') || n.includes('fitness') || n.includes('strava')) return "SALUD Y FITNESS";
-    if (n.includes('icloud') || n.includes('google') || n.includes('dropbox') || n.includes('aws') || n.includes('heroku') || n.includes('adobe') || n.includes('photoshop') || n.includes('chatgpt') || n.includes('gemini') || n.includes('bitwarden') || n.includes('nordvpn') || n.includes('retouch') || n.includes('parcel')) return "HERRAMIENTAS";
+    if (n.includes('icloud') || n.includes('google') || n.includes('dropbox') || n.includes('aws') || n.includes('heroku') || n.includes('adobe') || n.includes('photoshop') || n.includes('chatgpt') || n.includes('gemini') || n.includes('bitwarden') || n.includes('nordvpn') || n.includes('retouch') || n.includes('parcel') || n.includes('claude')) return "HERRAMIENTAS";
     return "GENERAL";
 }
 
@@ -741,7 +748,7 @@ function openDetails(id) {
 
 async function cancelCurrentSub() {
     if (!currentSub) return;
-    if (!confirm(`¿Quieres marcar como cancelada la suscripción a ${currentSub.nombre}? Se archivará en tu historial.`)) return;
+    if (!await appConfirm(`¿Quieres marcar como cancelada la suscripción a ${currentSub.nombre}? Se archivará en tu historial.`, { okText: 'Cancelar suscripción', cancelText: 'Volver' })) return;
 
     try {
         await pb.collection('suscripciones').update(currentSub.id, { estado: 'cancelada' });
@@ -749,13 +756,13 @@ async function cancelCurrentSub() {
         await loadSuscripciones();
         showView('view-home');
     } catch (err) {
-        alert("Error al cancelar: " + err.message);
+        appAlert("Error al cancelar: " + err.message);
     }
 }
 
 async function reactivateCurrentSub() {
     if (!currentSub) return;
-    if (!confirm(`¿Quieres reactivar la suscripción a ${currentSub.nombre}? Volverá a contar en tus gastos.`)) return;
+    if (!await appConfirm(`¿Quieres reactivar la suscripción a ${currentSub.nombre}? Volverá a contar en tus gastos.`, { okText: 'Reactivar' })) return;
 
     try {
         await pb.collection('suscripciones').update(currentSub.id, { estado: 'activa' });
@@ -763,7 +770,7 @@ async function reactivateCurrentSub() {
         await loadSuscripciones();
         showView('view-home');
     } catch (err) {
-        alert("Error al reactivar: " + err.message);
+        appAlert("Error al reactivar: " + err.message);
     }
 }
 
@@ -788,7 +795,7 @@ async function saveSubscription() {
     const cat = document.getElementById('add-category').value;
 
     if (!name || isNaN(amount) || amount < 0 || !date) {
-        return alert("Por favor completa los campos correctamente");
+        return appAlert("Por favor completa los campos correctamente");
     }
 
     const formData = new FormData();
@@ -835,7 +842,7 @@ async function saveSubscription() {
         await loadSuscripciones();
         showView('view-home');
     } catch (err) {
-        alert("Error guardando datos: " + err.message);
+        appAlert("Error guardando datos: " + err.message);
     } finally {
         btn.textContent = "Guardar";
         btn.disabled = false;
@@ -876,7 +883,7 @@ function editCurrentSub() {
 
 async function deleteCurrentSub() {
     if (!currentSub) return;
-    if (!confirm(`¿Estás seguro de eliminar definitivamente la suscripción a ${currentSub.nombre}? Esta acción no se puede deshacer.`)) return;
+    if (!await appConfirm(`¿Estás seguro de eliminar definitivamente la suscripción a ${currentSub.nombre}? Esta acción no se puede deshacer.`, { okText: 'Eliminar', danger: true })) return;
 
     try {
         await pb.collection('suscripciones').delete(currentSub.id);
@@ -884,7 +891,7 @@ async function deleteCurrentSub() {
         await loadSuscripciones();
         showView('view-home');
     } catch (err) {
-        alert("Error eliminando: " + err.message);
+        appAlert("Error eliminando: " + err.message);
     }
 }
 
@@ -1016,7 +1023,7 @@ function csvCell(value) {
 }
 
 function exportData() {
-    if (suscripciones.length === 0) return alert("No hay datos para exportar");
+    if (suscripciones.length === 0) return appAlert("No hay datos para exportar");
 
     // Formato pensado para Excel/Numbers en español: separador ";", coma decimal y BOM UTF-8 (tildes correctas)
     const header = ['Nombre', 'Cantidad', 'Ciclo', 'Categoria', 'Estado', 'Primera Factura'];
@@ -1045,14 +1052,56 @@ function exportData() {
 }
 
 async function logout() {
-    if (!confirm("¿Cerrar sesión en Mis Suscripciones?")) return;
+    if (!await appConfirm("¿Cerrar sesión en Mis Suscripciones?", { okText: 'Cerrar sesión', danger: true })) return;
     pb.authStore.clear();
     location.reload();
+}
+
+// DIÁLOGOS PROPIOS (sustituyen a alert/confirm del navegador)
+function appConfirm(message, { okText = 'Aceptar', cancelText = 'Cancelar', danger = false } = {}) {
+    return new Promise(resolve => {
+        const dlg = document.getElementById('app-dialog');
+        const ok = document.getElementById('dialog-ok');
+        const cancel = document.getElementById('dialog-cancel');
+        if (!dlg) return resolve(cancelText === null ? true : window.confirm(message));
+
+        document.getElementById('dialog-msg').textContent = message;
+        ok.textContent = okText;
+        ok.classList.toggle('dialog-btn-danger', !!danger);
+        cancel.hidden = cancelText === null;
+        if (cancelText !== null) cancel.textContent = cancelText;
+
+        const previousFocus = document.activeElement;
+        const close = (value) => {
+            dlg.classList.remove('open');
+            dlg.hidden = true;
+            ok.onclick = cancel.onclick = dlg.onclick = null;
+            document.removeEventListener('keydown', onKey);
+            if (previousFocus && previousFocus.focus) previousFocus.focus();
+            resolve(value);
+        };
+        const onKey = (e) => {
+            if (e.key === 'Escape') close(cancelText === null);
+        };
+        ok.onclick = () => close(true);
+        cancel.onclick = () => close(false);
+        dlg.onclick = (e) => { if (e.target === dlg) close(cancelText === null); };
+        document.addEventListener('keydown', onKey);
+
+        dlg.hidden = false;
+        requestAnimationFrame(() => dlg.classList.add('open'));
+        ok.focus();
+    });
+}
+
+function appAlert(message) {
+    return appConfirm(message, { okText: 'Entendido', cancelText: null });
 }
 
 function showToast(msg) {
     const t = document.getElementById('toast');
     t.textContent = msg;
     t.style.opacity = '1';
-    setTimeout(() => { t.style.opacity = '0'; }, 3000);
+    clearTimeout(showToast._timer);
+    showToast._timer = setTimeout(() => { t.style.opacity = '0'; }, 3000);
 }
