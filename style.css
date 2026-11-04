@@ -1200,6 +1200,12 @@ button:active {
     border: 1px solid rgba(239, 68, 68, 0.2);
 }
 
+.btn-success {
+    background: var(--success-bg);
+    color: var(--success);
+    border: 1px solid rgba(16, 185, 129, 0.2);
+}
+
 /* SETTINGS VIEW */
 .settings-section {
     margin: 20px 0;

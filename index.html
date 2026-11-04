@@ -34,7 +34,7 @@
                 <h2>Mis Suscripciones</h2>
                 <p>Gestiona y controla todos tus pagos periódicos</p>
                 <input type="email" id="login-email" placeholder="Correo electrónico" autocomplete="email">
-                <input type="password" id="login-pass" placeholder="Contraseña">
+                <input type="password" id="login-pass" placeholder="Contraseña" autocomplete="current-password">
                 <button id="btn-login" onclick="login()">Iniciar sesión</button>
             </div>
         </div>
@@ -334,6 +334,10 @@
 
             <button class="btn-action-outline btn-warning" id="btn-cancel-sub" onclick="cancelCurrentSub()">
                 <i data-lucide="x-circle"></i> Cancelar Suscripción
+            </button>
+
+            <button class="btn-action-outline btn-success" id="btn-reactivate-sub" onclick="reactivateCurrentSub()" style="display: none;">
+                <i data-lucide="rotate-ccw"></i> Reactivar Suscripción
             </button>
 
             <button class="btn-action-outline btn-danger" onclick="deleteCurrentSub()">

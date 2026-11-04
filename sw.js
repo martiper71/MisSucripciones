@@ -1,4 +1,4 @@
-const CACHE_NAME = 'suscripciones-v3';
+const CACHE_NAME = 'suscripciones-v4';
 const urlsToCache = [
   './',
   './index.html',
