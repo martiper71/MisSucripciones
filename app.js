@@ -326,7 +326,9 @@ function showAdd() {
     document.getElementById('add-name').value = '';
     document.getElementById('add-amount').value = '';
     document.getElementById('add-date').value = getTodayDateString();
-    document.getElementById('add-category').value = 'AUTO';
+
+    const catEl = document.getElementById('add-category');
+    if (catEl) catEl.value = 'AUTO';
 
     clearSelectedLogo();
     logoRemoved = false;
@@ -580,7 +582,6 @@ function getChargesInRange(sub, from, to) {
 }
 
 function subRowHtml(sub, { when, soon = false, extraClass = '' } = {}) {
-    const cat = getEffectiveCategory(sub);
     const amount = parseFloat(sub.cantidad) || 0;
     return `
         <li>
@@ -588,7 +589,7 @@ function subRowHtml(sub, { when, soon = false, extraClass = '' } = {}) {
                 <span class="logo">${logoImgHtml(sub)}</span>
                 <span class="row-main">
                     <span class="sub-name">${escapeHtml(sub.nombre)}</span>
-                    <span class="sub-when${soon ? ' soon' : ''}"><span class="cat-dot" data-cat="${escapeHtml(cat)}"></span>${escapeHtml(when)}</span>
+                    <span class="sub-when${soon ? ' soon' : ''}">${escapeHtml(when)}</span>
                 </span>
                 <span class="sub-price">
                     <span class="sub-amount">${money(amount)}</span>
@@ -681,7 +682,6 @@ function renderHome() {
 
     active.forEach(sub => {
         if (searchQuery && !sub.nombre.toLowerCase().includes(searchQuery)) return;
-        if (selectedCategoryFilter !== 'all' && getEffectiveCategory(sub) !== selectedCategoryFilter) return;
         const group = groups.find(g => !g.until || sub._nextBill <= g.until);
         group.items.push(sub);
         group.total += parseFloat(sub.cantidad) || 0;
@@ -758,7 +758,8 @@ function openDetails(id) {
     document.getElementById('det-next').textContent = canceled ? '—' : shortDate(next);
     document.getElementById('det-prev').textContent = shortDate(prev);
     document.getElementById('det-annual').textContent = money(calculateMonthlyCost(cantidad, sub.ciclo) * 12);
-    document.getElementById('det-category').textContent = catInfo(getEffectiveCategory(sub)).label;
+    const detCatEl = document.getElementById('det-category');
+    if (detCatEl) detCatEl.textContent = catInfo(getEffectiveCategory(sub)).label;
     document.getElementById('det-cat').textContent = shortDate(start);
 
     document.getElementById('btn-cancel-sub').style.display = canceled ? 'none' : 'flex';
@@ -813,7 +814,8 @@ async function saveSubscription() {
     const name = document.getElementById('add-name').value.trim();
     const amount = parseFloat(document.getElementById('add-amount').value);
     const date = document.getElementById('add-date').value;
-    const cat = document.getElementById('add-category').value;
+    const catEl = document.getElementById('add-category');
+    const cat = catEl ? catEl.value : '';
 
     if (!name || isNaN(amount) || amount < 0 || !date) {
         return appAlert("Por favor completa los campos correctamente");

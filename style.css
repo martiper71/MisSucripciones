@@ -247,48 +247,27 @@ svg.lucide {
     opacity: 0.5;
 }
 
-/* ---------- Horizonte de 30 días (la pieza protagonista) ---------- */
+/* ---------- Resumen superior (Media al mes / Al año / Activas) ---------- */
 .horizon {
     background: var(--hero);
     color: var(--hero-ink);
     border-radius: var(--r-xl);
-    padding: 20px 20px 16px;
+    padding: 18px 20px 20px;
     margin-bottom: 18px;
-}
-
-.horizon-label {
-    font-size: 14px;
-    font-weight: 500;
-    opacity: 0.85;
-}
-
-.horizon-amount {
-    font-family: var(--font-display);
-    font-size: 52px;
-    font-weight: 750;
-    letter-spacing: -0.035em;
-    line-height: 1;
-    margin: 6px 0 8px;
-}
-
-.horizon-next {
-    font-size: 15px;
-    opacity: 0.92;
-    min-height: 22px;
 }
 
 .horizon-facts {
     display: grid;
     grid-template-columns: repeat(3, auto);
     justify-content: space-between;
-    margin: 18px 0 0;
-    padding-top: 12px;
-    border-top: 1px solid rgba(255, 255, 255, 0.2);
+    margin: 0;
+    padding-top: 0;
+    border-top: 0;
 }
 
 .horizon-facts dt {
     font-size: 13px;
-    opacity: 0.78;
+    opacity: 0.85;
 }
 
 .horizon-facts dd {
@@ -298,7 +277,7 @@ svg.lucide {
     font-size: 24px;
     font-weight: 700;
     line-height: 1.15;
-    margin-top: 2px;
+    margin-top: 4px;
 }
 
 /* ---------- Búsqueda y filtros ---------- */

@@ -54,6 +54,24 @@
             </button>
         </header>
 
+        <section class="horizon" aria-labelledby="horizon-facts-title">
+            <h2 id="horizon-facts-title" class="visually-hidden">Resumen de suscripciones</h2>
+            <dl class="horizon-facts">
+                <div>
+                    <dt>Media al mes</dt>
+                    <dd id="total-monthly-spend">0,00 €</dd>
+                </div>
+                <div>
+                    <dt>Al año</dt>
+                    <dd id="home-annual-projection">0,00 €</dd>
+                </div>
+                <div>
+                    <dt>Activas</dt>
+                    <dd id="hero-badge-active">0</dd>
+                </div>
+            </dl>
+        </section>
+
         <div class="filters">
             <div class="search-box">
                 <i data-lucide="search" class="search-icon"></i>
@@ -62,14 +80,6 @@
                 <button id="search-clear-btn" class="search-clear" onclick="clearSearch()" aria-label="Borrar búsqueda" style="display: none;">
                     <i data-lucide="x"></i>
                 </button>
-            </div>
-            <div class="chips" id="home-category-pills" role="group" aria-label="Filtrar por categoría">
-                <button class="pill active" data-cat="all" onclick="filterByCategory('all')">Todas</button>
-                <button class="pill" data-cat="MULTIMEDIA" onclick="filterByCategory('MULTIMEDIA')"><span class="cat-dot" data-cat="MULTIMEDIA"></span>Multimedia</button>
-                <button class="pill" data-cat="MÚSICA" onclick="filterByCategory('MÚSICA')"><span class="cat-dot" data-cat="MÚSICA"></span>Música</button>
-                <button class="pill" data-cat="HERRAMIENTAS" onclick="filterByCategory('HERRAMIENTAS')"><span class="cat-dot" data-cat="HERRAMIENTAS"></span>Herramientas</button>
-                <button class="pill" data-cat="SALUD Y FITNESS" onclick="filterByCategory('SALUD Y FITNESS')"><span class="cat-dot" data-cat="SALUD Y FITNESS"></span>Salud</button>
-                <button class="pill" data-cat="GENERAL" onclick="filterByCategory('GENERAL')"><span class="cat-dot" data-cat="GENERAL"></span>General</button>
             </div>
         </div>
 
@@ -147,17 +157,6 @@
                     <label class="row-main" for="add-date">Primer cobro</label>
                     <input type="date" id="add-date" class="row-input">
                 </li>
-                <li class="row">
-                    <label class="row-main" for="add-category">Categoría</label>
-                    <select id="add-category" class="row-input">
-                        <option value="AUTO">Automática</option>
-                        <option value="MULTIMEDIA">Multimedia</option>
-                        <option value="MÚSICA">Música</option>
-                        <option value="HERRAMIENTAS">Herramientas</option>
-                        <option value="SALUD Y FITNESS">Salud</option>
-                        <option value="GENERAL">General</option>
-                    </select>
-                </li>
             </ul>
             <p class="hint">Los siguientes cobros se calculan solos a partir de esta fecha.</p>
 
@@ -173,7 +172,6 @@
                         <input type="file" id="logo-file-input" accept="image/*" style="display: none;" onchange="previewSelectedFile()">
                     </div>
                 </div>
-                <div class="preset-strip" id="preset-logos-container"></div>
             </div>
         </div>
     </div>
@@ -202,7 +200,6 @@
                 <li class="row"><span class="row-main">Próximo cobro</span><span class="row-value" id="det-next">-</span></li>
                 <li class="row"><span class="row-main">Cobro anterior</span><span class="row-value" id="det-prev">-</span></li>
                 <li class="row"><span class="row-main">Coste al año</span><span class="row-value" id="det-annual">-</span></li>
-                <li class="row"><span class="row-main">Categoría</span><span class="row-value" id="det-category">-</span></li>
                 <li class="row"><span class="row-main">Desde</span><span class="row-value" id="det-cat">-</span></li>
             </ul>
 
