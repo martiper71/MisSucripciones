@@ -647,22 +647,30 @@ function renderHome() {
         });
     });
 
-    // --- Horizonte de 30 días ---
-    document.getElementById('horizon-total').textContent = money(horizonTotal);
+    // --- Horizonte de 30 días (si los elementos existen en el DOM) ---
+    const horizonTotalEl = document.getElementById('horizon-total');
+    if (horizonTotalEl) horizonTotalEl.textContent = money(horizonTotal);
+
     const nextEl = document.getElementById('horizon-next');
-    if (!active.length) {
-        nextEl.textContent = 'Añade tu primera suscripción para ver aquí tus cobros.';
-    } else if (!horizonCount) {
-        nextEl.textContent = `Nada que pagar. El próximo cobro es ${closest.nombre}, ${relativePhrase(closest._nextBill)}.`;
-    } else {
-        const plural = horizonCount === 1 ? 'cobro' : 'cobros';
-        nextEl.textContent = `${horizonCount} ${plural}. El próximo, ${closest.nombre} ${relativePhrase(closest._nextBill)}.`;
+    if (nextEl) {
+        if (!active.length) {
+            nextEl.textContent = 'Añade tu primera suscripción para ver aquí tus cobros.';
+        } else if (!horizonCount) {
+            nextEl.textContent = `Nada que pagar. El próximo cobro es ${closest.nombre}, ${relativePhrase(closest._nextBill)}.`;
+        } else {
+            const plural = horizonCount === 1 ? 'cobro' : 'cobros';
+            nextEl.textContent = `${horizonCount} ${plural}. El próximo, ${closest.nombre} ${relativePhrase(closest._nextBill)}.`;
+        }
     }
 
+    const monthlyEl = document.getElementById('total-monthly-spend');
+    if (monthlyEl) monthlyEl.textContent = money(totalMensual);
 
-    document.getElementById('total-monthly-spend').textContent = money(totalMensual);
-    document.getElementById('home-annual-projection').textContent = money(totalMensual * 12);
-    document.getElementById('hero-badge-active').textContent = active.length;
+    const annualEl = document.getElementById('home-annual-projection');
+    if (annualEl) annualEl.textContent = money(totalMensual * 12);
+
+    const badgeActiveEl = document.getElementById('hero-badge-active');
+    if (badgeActiveEl) badgeActiveEl.textContent = active.length;
 
     // --- Lista agrupada ---
     const groups = [
